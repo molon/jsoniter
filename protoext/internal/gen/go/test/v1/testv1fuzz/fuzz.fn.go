@@ -10,6 +10,7 @@ var ff = [...]any{
 	FuzzAll,
 	FuzzRepeated,
 	FuzzOptionals,
+	FuzzWKTOptionals,
 	FuzzMessage,
 	FuzzWKTs,
 	FuzzRepeatedWKTs,

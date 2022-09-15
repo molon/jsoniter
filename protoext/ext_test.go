@@ -48,6 +48,27 @@ func pUnmarshalFromString(s string, m proto.Message) error {
 	return protojson.Unmarshal([]byte(s), m)
 }
 
+func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions, m *testv1.All) {
+	if opts == nil {
+		opts = &protojson.MarshalOptions{}
+	}
+
+	var err error
+	var jsnA, jsnB string
+
+	jsnA, err = cfg.MarshalToString(m)
+	assert.Nil(t, err)
+	jsnB, err = pMarshalToStringWithOpts(*opts, m)
+	assert.Nil(t, err)
+	assert.Equal(t, jsnA, jsnB)
+
+	m2 := &testv1.All{}
+	err = cfg.UnmarshalFromString(jsnA, m2)
+	assert.Nil(t, err)
+	// TODO: how to dont use proto.Equal
+	assert.True(t, proto.Equal(m, m2))
+}
+
 func TestCompareStdAndProto(t *testing.T) {
 	type MM struct {
 		I64   int64    `json:"i64"`
@@ -177,59 +198,25 @@ func TestJsonName(t *testing.T) {
 }
 
 func TestEmitUnpopulated(t *testing.T) {
-	var err error
-	var jsnA, jsnB string
-	m2 := &testv1.All{}
-	m := &testv1.All{
-		Wkt: &testv1.WKTs{},
-	}
-	m.Wkt.T = timestamppb.New(timeCase)
-	m.Wkt.D = durationpb.New(36 * time.Second)
-
-	cfg := jsoniter.Config{}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	cfg.RegisterExtension(&extra.EmitEmptyWithBindingExtension{Filter: protoext.ProtoEmitUnpopulated})
-	jsnA, err = cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	jsnB, err = pMarshalToStringWithOpts(protojson.MarshalOptions{EmitUnpopulated: true}, m)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
-
-	m2.Reset()
-	err = cfg.UnmarshalFromString(jsnA, m2)
-	assert.Nil(t, err)
-	// TODO: 考虑内部不使用 reflect 方法去设置
-	// assert.Equal(t, m, m2)
-	assert.True(t, proto.Equal(m, m2))
-}
-
-func TestWellKnownTypes(t *testing.T) {
 	// TODO: 如果是 any ，那 protojson 的 opts 如何传递进去呢？
-	var err error
-	var jsnA, jsnB string
-	m2 := &testv1.All{}
 	m := &testv1.All{
 		Wkt: &testv1.WKTs{
-			T:  timestamppb.Now(),
-			D:  durationpb.New(36 * time.Second),
-			Nu: structpb.NullValue_NULL_VALUE,
-			// ...
+			T:   timestamppb.New(timeCase),
+			D:   durationpb.New(36 * time.Second),
+			I64: wrapperspb.Int64(0), // protojson will not omit zero value, only omit zero pointer, we stay compatible,
+			U64: wrapperspb.UInt64(0),
+			Nu:  structpb.NullValue_NULL_VALUE,
 		},
 	}
+
 	cfg := jsoniter.Config{}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	commonCheck(t, cfg, &protojson.MarshalOptions{}, m)
 
-	jsnA, err = cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	jsnB, err = pMarshalToString(m)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
-
-	m2.Reset()
-	err = cfg.UnmarshalFromString(jsnA, m2)
-	assert.Nil(t, err)
-	// TODO: 考虑内部不使用 reflect 方法去设置
-	assert.True(t, proto.Equal(m, m2))
+	cfg = jsoniter.Config{}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	cfg.RegisterExtension(&extra.EmitEmptyWithBindingExtension{Filter: protoext.ProtoEmitUnpopulated})
+	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
 
 func TestEnum(t *testing.T) {
@@ -393,4 +380,73 @@ func TestOneof(t *testing.T) {
 	// // assert.Nil(t, err)
 	// // // protojson will only handle internal of testv1.OneOf
 	// // assert.Equal(t, `{"OneOf":"fakeOneOf","i32":3}`, jsn)
+}
+
+func TestInteger64AsString(t *testing.T) {
+	cfg := jsoniter.Config{}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	i64 := int64(-224123123123123123)
+	u64 := uint64(22412312321312312)
+	m := &testv1.All{
+		R: &testv1.Repeated{
+			I64: []int64{-12, -23},
+			U64: []uint64{22, 33},
+		},
+		S: &testv1.Singular{
+			I64: -123123123123123123,
+			U64: 12312312321312312,
+		},
+		O: &testv1.Optionals{
+			I64: &i64,
+			U64: &u64,
+		},
+		OF: &testv1.OneOf{
+			OneOf: &testv1.OneOf_I64{
+				I64: -786,
+			},
+		},
+		Wkt: &testv1.WKTs{
+			I64: wrapperspb.Int64(-333),
+			U64: wrapperspb.UInt64(0),
+		},
+		RWkt: &testv1.RepeatedWKTs{
+			I64: []*wrapperspb.Int64Value{
+				wrapperspb.Int64(-333), wrapperspb.Int64(444),
+			},
+			U64: []*wrapperspb.UInt64Value{
+				wrapperspb.UInt64(555), wrapperspb.UInt64(666),
+			},
+		},
+		OptWkt: &testv1.WKTOptionals{
+			I64: wrapperspb.Int64(-777),
+			U64: wrapperspb.UInt64(888),
+		},
+		OWkt: &testv1.OneOfWKT{
+			OneOf: &testv1.OneOfWKT_I64{
+				I64: wrapperspb.Int64(-999),
+			},
+		},
+	}
+	jsn, err := cfg.MarshalToString(m)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"r":{"i64":["-12","-23"],"u64":["22","33"]},"s":{"i64":"-123123123123123123","u64":"12312312321312312"},"oF":{"i64":"-786"},"oWkt":{"i64":"-999"},"wkt":{"i64":"-333","u64":"0"},"o":{"i64":"-224123123123123123","u64":"22412312321312312"},"rWkt":{"i64":["-333","444"],"u64":["555","666"]},"optWkt":{"i64":"-777","u64":"888"}}`, jsn)
+	commonCheck(t, cfg, nil, m)
+	m.OF.OneOf = &testv1.OneOf_U64{
+		U64: 890,
+	}
+	commonCheck(t, cfg, nil, m)
+
+	cfg = jsoniter.Config{}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{Encode64BitAsInteger: true})
+	jsn, err = cfg.MarshalToString(m)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"r":{"i64":[-12,-23],"u64":[22,33]},"s":{"i64":-123123123123123123,"u64":12312312321312312},"oF":{"u64":890},"oWkt":{"i64":-999},"wkt":{"i64":-333,"u64":0},"o":{"i64":-224123123123123123,"u64":22412312321312312},"rWkt":{"i64":[-333,444],"u64":[555,666]},"optWkt":{"i64":-777,"u64":888}}`, jsn)
+
+	// TIPS: protjson does not support Encode64BitAsInteger, so we does not need to check marshal result
+	// but it support fuzzy unmarshal
+	m2 := &testv1.All{}
+	err = pUnmarshalFromString(jsn, m2)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(m, m2))
 }

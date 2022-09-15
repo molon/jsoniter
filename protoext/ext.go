@@ -1,87 +1,21 @@
 package protoext
 
 import (
-	"fmt"
-	"io"
 	"reflect"
 	"strings"
-	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type protoEncoder struct {
-	ptrType reflect2.Type
-}
-
-func (enc *protoEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	if *((*unsafe.Pointer)(ptr)) == nil {
-		stream.WriteNil()
-		return
-	}
-	data, err := protojson.Marshal(enc.ptrType.UnsafeIndirect(ptr).(proto.Message))
-	if err != nil {
-		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", enc.ptrType, err)
-		return
-	}
-	_, stream.Error = stream.Write(data)
-}
-
-func (enc *protoEncoder) IsEmpty(ptr unsafe.Pointer) bool {
-	return *((*unsafe.Pointer)(ptr)) == nil
-}
-
-type protoDecoder struct {
-	ptrType  reflect2.Type
-	elemType reflect2.Type
-}
-
-func (dec *protoDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-	if iter.ReadNil() {
-		*((*unsafe.Pointer)(ptr)) = nil
-	} else {
-		bytes := iter.SkipAndReturnBytes()
-		if iter.Error != nil && iter.Error != io.EOF {
-			return
-		}
-
-		if *((*unsafe.Pointer)(ptr)) == nil {
-			//pointer to null, we have to allocate memory to hold the value
-			// newPtr := dec.elemType.UnsafeNew()
-			// err := protojson.Unmarshal(bytes, dec.ptrType.UnsafeIndirect(unsafe.Pointer(&newPtr)).(proto.Message))
-			m := dec.ptrType.UnsafeIndirect(ptr).(proto.Message).ProtoReflect().New().Interface()
-			err := protojson.Unmarshal(bytes, m)
-			if err != nil {
-				iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
-					"errorr calling protojson.Unmarshal for type %s: %s",
-					dec.ptrType, err,
-				))
-			}
-			// *((*unsafe.Pointer)(ptr)) = newPtr
-			*((*unsafe.Pointer)(ptr)) = reflect2.PtrOf(m)
-		} else {
-			//reuse existing instance
-			err := protojson.Unmarshal(bytes, dec.ptrType.UnsafeIndirect(ptr).(proto.Message))
-			if err != nil {
-				iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
-					"error calling protojson.Unmarshal for type %s: %s",
-					dec.ptrType, err,
-				))
-			}
-		}
-	}
-}
-
-// TODO: 会需要一个 64位数字 应该以字符串表示的可选要求，但是要注意默认的 protojson 就一定为如此，所以我们需要针对此情况做一定的反向处理
 // TODO: genid.Value_message_fullname 相关可能也需要特殊处理
 type ProtoExtension struct {
 	jsoniter.DummyExtension
 
-	UseEnumNumbers bool
-	UseProtoNames  bool
+	UseEnumNumbers       bool
+	UseProtoNames        bool
+	Encode64BitAsInteger bool
 }
 
 func (e *ProtoExtension) UpdateStructDescriptor(desc *jsoniter.StructDescriptor) {
@@ -132,8 +66,12 @@ func (e *ProtoExtension) UpdateStructDescriptor(desc *jsoniter.StructDescriptor)
 }
 
 func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
-	if _, ok := wellKnownPtrTypes[typ]; ok {
-		return &protoEncoder{
+	if codec, ok := WellKnownTypeCodecs[typ]; ok {
+		if codec != nil && codec.Encoder != nil {
+			return codec.Encoder
+		}
+		// If not specified, use protojson for processing
+		return &protojsonEncoder{
 			ptrType: typ,
 		}
 	}
@@ -158,8 +96,12 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 }
 
 func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
-	if _, ok := wellKnownPtrTypes[typ]; ok {
-		return &protoDecoder{
+	if codec, ok := WellKnownTypeCodecs[typ]; ok {
+		if codec != nil && codec.Decoder != nil {
+			return codec.Decoder
+		}
+		// If not specified, use protojson for processing
+		return &protojsonDecoder{
 			ptrType:  typ,
 			elemType: typ.(reflect2.PtrType).Elem(),
 		}
@@ -180,5 +122,39 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 			elemType: typ,
 		}
 	}
+
 	return nil
+}
+
+var wellKnown64BitIntegerTypes = map[reflect2.Type]bool{
+	reflect2.TypeOf((*wrapperspb.Int64Value)(nil)):  true,
+	reflect2.TypeOf((*wrapperspb.UInt64Value)(nil)): true,
+}
+
+func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
+	if e.Encode64BitAsInteger {
+		return encoder
+	}
+	// https://developers.google.com/protocol-buffers/docs/proto3 int64, fixed64, uint64 should be string
+	// https://github.com/protocolbuffers/protobuf-go/blob/e62d8edb7570c986a51e541c161a0c93bbaf9253/encoding/protojson/encode.go#L274-L277
+	// https://github.com/protocolbuffers/protobuf-go/pull/14
+	// https://github.com/golang/protobuf/issues/1414
+	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
+		return &stringModeNumberEncoder{encoder}
+	}
+	if wellKnown64BitIntegerTypes[typ] {
+		return &stringModeNumberEncoder{encoder}
+	}
+	return encoder
+}
+
+func (e *ProtoExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
+	// fuzzy decode, so we dont check Encode64BitAsInteger
+	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
+		return &stringModeNumberDecoder{decoder}
+	}
+	if wellKnown64BitIntegerTypes[typ] {
+		return &stringModeNumberDecoder{decoder}
+	}
+	return decoder
 }

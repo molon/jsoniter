@@ -15,7 +15,7 @@ message All {
   Singular s = 2;
   OneOf o_f = 3;
   JsonEnum e = 4;
-  // OneOfWKT o_wkt = 5;
+  OneOfWKT o_wkt = 5;
   WKTs wkt = 6;    
   Optionals o = 7;
   RepeatedWKTs r_wkt = 8;
@@ -24,6 +24,7 @@ message All {
   string snake_case = 11;
   string lowerCamelCase = 12;
   string UpwerCamelCase = 13;
+  WKTOptionals opt_wkt = 14;
 }
 
 message Repeated {
@@ -64,6 +65,25 @@ message Optionals {
   optional bytes by = 15;
   optional Message s = 16;
   optional JsonEnum e = 17;
+}
+
+message WKTOptionals {
+  optional google.protobuf.Any a = 1;
+  optional google.protobuf.Duration d = 2;
+  optional google.protobuf.Timestamp t = 3;
+  optional google.protobuf.Struct st = 4;
+  optional google.protobuf.Int32Value i32 = 5;
+  optional google.protobuf.UInt32Value ui32 = 7;
+  optional google.protobuf.Int64Value i64 = 8;
+  optional google.protobuf.UInt64Value u64 = 13;
+  optional google.protobuf.FloatValue f32 = 9;
+  optional google.protobuf.DoubleValue f64 = 10;
+  optional google.protobuf.BoolValue b = 11;
+  optional google.protobuf.StringValue s = 6;
+  optional google.protobuf.BytesValue by = 12;
+  optional google.protobuf.FieldMask fm = 14;
+  optional google.protobuf.Empty em = 15;
+  optional google.protobuf.NullValue nu = 16;
 }
 
 enum JsonEnum {
@@ -157,7 +177,6 @@ message OneOfWKT {
 }
 
 message Singular {
-  
   JsonEnum e = 2;
   string s = 3;
   int32 i32 = 4;

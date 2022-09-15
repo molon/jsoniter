@@ -249,6 +249,10 @@ func (iter *Iterator) readByte() (ret byte) {
 	return ret
 }
 
+func (iter *Iterator) NextToken() (ret byte) {
+	return iter.nextToken()
+}
+
 func (iter *Iterator) loadMore() bool {
 	if iter.reader == nil {
 		if iter.Error == nil {

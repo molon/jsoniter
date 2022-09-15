@@ -16,6 +16,7 @@ func FuzzAll(x *v1.All, f gofuzz.Continue) {
 	f.Fuzz(&x.S)
 	f.Fuzz(&x.OF)
 	f.Fuzz(&x.E)
+	f.Fuzz(&x.OWkt)
 	f.Fuzz(&x.Wkt)
 	f.Fuzz(&x.O)
 	f.Fuzz(&x.RWkt)
@@ -24,6 +25,7 @@ func FuzzAll(x *v1.All, f gofuzz.Continue) {
 	f.Fuzz(&x.SnakeCase)
 	f.Fuzz(&x.LowerCamelCase)
 	f.Fuzz(&x.UpwerCamelCase)
+	f.Fuzz(&x.OptWkt)
 }
 
 // FuzzRepeated is a fuzz function.
@@ -68,6 +70,27 @@ func FuzzOptionals(x *v1.Optionals, f gofuzz.Continue) {
 	f.Fuzz(&x.By)
 	f.Fuzz(&x.S)
 	f.Fuzz(&x.E)
+}
+
+// FuzzWKTOptionals is a fuzz function.
+// If can be registered using `Fuzzer.Funcs` function.
+func FuzzWKTOptionals(x *v1.WKTOptionals, f gofuzz.Continue) {
+	f.Fuzz(&x.A)
+	f.Fuzz(&x.D)
+	f.Fuzz(&x.T)
+	f.Fuzz(&x.St)
+	f.Fuzz(&x.I32)
+	f.Fuzz(&x.Ui32)
+	f.Fuzz(&x.I64)
+	f.Fuzz(&x.U64)
+	f.Fuzz(&x.F32)
+	f.Fuzz(&x.F64)
+	f.Fuzz(&x.B)
+	f.Fuzz(&x.S)
+	f.Fuzz(&x.By)
+	f.Fuzz(&x.Fm)
+	f.Fuzz(&x.Em)
+	f.Fuzz(&x.Nu)
 }
 
 // FuzzMessage is a fuzz function.
