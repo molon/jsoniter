@@ -3,7 +3,7 @@ package extra
 import (
 	"testing"
 
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -326,16 +326,22 @@ func Test_any_to_float64(t *testing.T) {
 }
 
 func Test_empty_array_as_map(t *testing.T) {
+	cfg := jsoniter.Config{}.Froze()
+	cfg.RegisterExtension(&TolerateEmptyArrayExtension{})
+
 	should := require.New(t)
 	var val map[string]interface{}
-	should.Nil(jsoniter.UnmarshalFromString(`[]`, &val))
+	should.Nil(cfg.UnmarshalFromString(`[]`, &val))
 	should.Equal(map[string]interface{}{}, val)
 }
 
 func Test_empty_array_as_object(t *testing.T) {
+	cfg := jsoniter.Config{}.Froze()
+	cfg.RegisterExtension(&TolerateEmptyArrayExtension{})
+
 	should := require.New(t)
 	var val struct{}
-	should.Nil(jsoniter.UnmarshalFromString(`[]`, &val))
+	should.Nil(cfg.UnmarshalFromString(`[]`, &val))
 	should.Equal(struct{}{}, val)
 }
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
 )
 
@@ -19,7 +19,8 @@ const minInt = -maxInt - 1
 // RegisterFuzzyDecoders decode input from PHP with tolerance.
 // It will handle string/number auto conversation, and treat empty [] as empty struct.
 func RegisterFuzzyDecoders() {
-	jsoniter.RegisterExtension(&tolerateEmptyArrayExtension{})
+	// Please register this extension yourself if necessary
+	// jsoniter.RegisterExtension(&TolerateEmptyArrayExtension{})
 	jsoniter.RegisterTypeDecoder("string", &fuzzyStringDecoder{})
 	jsoniter.RegisterTypeDecoder("float32", &fuzzyFloat32Decoder{})
 	jsoniter.RegisterTypeDecoder("float64", &fuzzyFloat64Decoder{})
@@ -145,11 +146,11 @@ func RegisterFuzzyDecoders() {
 	}})
 }
 
-type tolerateEmptyArrayExtension struct {
+type TolerateEmptyArrayExtension struct {
 	jsoniter.DummyExtension
 }
 
-func (extension *tolerateEmptyArrayExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
+func (extension *TolerateEmptyArrayExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
 	if typ.Kind() == reflect.Struct || typ.Kind() == reflect.Map {
 		return &tolerateEmptyArrayDecoder{decoder}
 	}
