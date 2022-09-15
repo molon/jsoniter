@@ -2,12 +2,15 @@ package jsoniter
 
 import (
 	"fmt"
-	"github.com/modern-go/reflect2"
 	"reflect"
 	"sort"
 	"strings"
 	"unicode"
 	"unsafe"
+
+	"github.com/modern-go/reflect2"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var typeDecoders = map[string]ValDecoder{}
@@ -331,12 +334,62 @@ func _getTypeEncoderFromExtension(ctx *ctx, typ reflect2.Type) ValEncoder {
 	return nil
 }
 
+var protoMessageType = reflect2.TypeOfPtr((*proto.Message)(nil)).Elem()
+
 func describeStruct(ctx *ctx, typ reflect2.Type) *StructDescriptor {
+	// for oneof reuse begin
+	var pb proto.Message
+	var pbReflect protoreflect.Message
+	// for oneof reuse end
+
 	structType := typ.(*reflect2.UnsafeStructType)
 	embeddedBindings := []*Binding{}
 	bindings := []*Binding{}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
+
+		// proto oneof embedded begin
+		if field.Type().Kind() == reflect.Interface {
+			oneofTag, hasOneofTag := field.Tag().Lookup("protobuf_oneof")
+			if hasOneofTag && reflect2.PtrTo(typ).Implements(protoMessageType) {
+				if pb == nil {
+					pb = typ.New().(proto.Message)
+					pbReflect = pb.ProtoReflect()
+				}
+				fieldType := field.Type()
+				fieldPtr := field.UnsafeGet(reflect2.PtrOf(pb))
+				od := pbReflect.Descriptor().Oneofs().ByName(protoreflect.Name(oneofTag))
+				if !od.IsSynthetic() { // ignore optional
+					fds := od.Fields()
+					for j := 0; j < fds.Len(); j++ {
+						fd := fds.Get(j)
+						value := pbReflect.NewField(fd)
+						pbReflect.Set(fd, value)
+
+						fTyp := reflect2.TypeOf(fieldType.UnsafeIndirect(fieldPtr))
+						if fTyp.Kind() == reflect.Ptr {
+							wrapPtrType := fTyp.(*reflect2.UnsafePtrType)
+							if wrapPtrType.Elem().Kind() == reflect.Struct {
+								structDescriptor := describeStruct(ctx, wrapPtrType.Elem())
+								for _, binding := range structDescriptor.Fields {
+									binding.levels = append([]int{i, j}, binding.levels...)
+									omitempty := binding.Encoder.(*structFieldEncoder).omitempty
+									binding.Encoder = &protoOneofWrapperEncoder{binding.Field.Name(), wrapPtrType, binding.Encoder}
+									binding.Encoder = &structFieldEncoder{field, binding.Encoder, omitempty}
+									binding.Decoder = &protoOneofWrapperDecoder{binding.Field.Name(), field.Type(), wrapPtrType, wrapPtrType.Elem(), binding.Decoder}
+									binding.Decoder = &structFieldDecoder{field, binding.Decoder}
+									embeddedBindings = append(embeddedBindings, binding)
+								}
+								continue
+							}
+						}
+					}
+					continue
+				}
+			}
+		}
+		// proto oneof embedded begin
+
 		tag, hastag := field.Tag().Lookup(ctx.getTagKey())
 		if ctx.onlyTaggedField && !hastag && !field.Anonymous() {
 			continue
