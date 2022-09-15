@@ -49,38 +49,8 @@ func BenchmarkRead(b *testing.B) {
 		var all testv1.All
 		f.Fuzz(&all)
 		buffer, _ := protojson.Marshal(&all)
-		buffers = append(buffers, buffer)
-	}
-
-	var all testv1.All
-	b.ReportAllocs()
-	b.ResetTimer()
-	b.Run("protojson", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			buffer := buffers[rand.Intn(len(buffers))]
-			_ = protojson.Unmarshal(buffer, &all)
-		}
-	})
-	b.Run("jsoniter", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			buffer := buffers[rand.Intn(len(buffers))]
-			_ = cfg.Unmarshal(buffer, &all)
-		}
-	})
-}
-
-func BenchmarkRead2(b *testing.B) {
-	cfg := jsoniter.Config{}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{
-		Encode64BitAsInteger: true,
-	})
-
-	f := appendFuzzFuncs(gofuzz.New())
-	var buffers [][]byte
-	for i := 0; i < 10000; i++ {
-		var all testv1.All
-		f.Fuzz(&all)
-		buffer, _ := cfg.Marshal(&all)
+		// TODO: slow if use this, dont know why now
+		// buffer, _ := cfg.Marshal(&all)
 		buffers = append(buffers, buffer)
 	}
 

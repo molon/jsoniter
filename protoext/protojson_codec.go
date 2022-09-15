@@ -47,20 +47,16 @@ func (dec *protojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 		}
 
 		if *((*unsafe.Pointer)(ptr)) == nil {
-			// newPtr := dec.elemType.UnsafeNew()
-			// err := protojson.Unmarshal(bytes, dec.ptrType.UnsafeIndirect(unsafe.Pointer(&newPtr)).(proto.Message))
-			m := dec.ptrType.UnsafeIndirect(ptr).(proto.Message).ProtoReflect().New().Interface()
-			err := protojson.Unmarshal(bytes, m)
+			elem := dec.elemType.UnsafeNew()
+			err := protojson.Unmarshal(bytes, dec.elemType.PackEFace(elem).(proto.Message))
 			if err != nil {
 				iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
 					"errorr calling protojson.Unmarshal for type %s: %s",
 					dec.ptrType, err,
 				))
 			}
-			// *((*unsafe.Pointer)(ptr)) = newPtr
-			*((*unsafe.Pointer)(ptr)) = reflect2.PtrOf(m)
+			*((*unsafe.Pointer)(ptr)) = elem
 		} else {
-			//reuse existing instance
 			err := protojson.Unmarshal(bytes, dec.ptrType.UnsafeIndirect(ptr).(proto.Message))
 			if err != nil {
 				iter.ReportError("protojson.Unmarshal", fmt.Sprintf(

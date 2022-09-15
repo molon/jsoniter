@@ -65,7 +65,7 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 	m2 := &testv1.All{}
 	err = cfg.UnmarshalFromString(jsnA, m2)
 	assert.Nil(t, err)
-	// TODO: how to dont use proto.Equal
+	// TIPS: If you have operated on m, such as `Clone` `protojson.Marshal`, etc., you must use proto.Equal to check equality
 	assert.True(t, proto.Equal(m, m2))
 }
 
@@ -449,4 +449,20 @@ func TestInteger64AsString(t *testing.T) {
 	err = pUnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(m, m2))
+}
+
+func TestUnmarshalExistWkt(t *testing.T) {
+	cfg := jsoniter.Config{}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	var err error
+	m := &testv1.All{
+		Wkt: &testv1.WKTs{
+			D: durationpb.New(30 * time.Second),
+		},
+	}
+	err = cfg.UnmarshalFromString(`{"wkt":{"d":"20s"}}`, m)
+	assert.Nil(t, err)
+	assert.Equal(t, 20*time.Second, m.Wkt.D.AsDuration())
+
 }
