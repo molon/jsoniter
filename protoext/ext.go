@@ -131,6 +131,7 @@ var wellKnown64BitIntegerTypes = map[reflect2.Type]bool{
 	reflect2.TypeOf((*wrapperspb.UInt64Value)(nil)): true,
 }
 
+// TODO: map<int64, string> str = 3; 下有问题，会过度的加括号
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	if e.Encode64BitAsInteger {
 		return encoder

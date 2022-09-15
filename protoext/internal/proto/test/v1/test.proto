@@ -203,6 +203,7 @@ message Map {
   map<bool, bytes> by = 4;
   map<uint32, bool> bo = 5;
   map<uint64, google.protobuf.Any> an = 6;
+  map<uint64, google.protobuf.UInt64Value> bn = 7;
 }
 
 message Nested {

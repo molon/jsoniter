@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -206,6 +207,7 @@ func TestEmitUnpopulated(t *testing.T) {
 			I64: wrapperspb.Int64(0), // protojson will not omit zero value, only omit zero pointer, we stay compatible,
 			U64: wrapperspb.UInt64(0),
 			Nu:  structpb.NullValue_NULL_VALUE,
+			Em:  &emptypb.Empty{},
 		},
 	}
 
@@ -464,5 +466,4 @@ func TestUnmarshalExistWkt(t *testing.T) {
 	err = cfg.UnmarshalFromString(`{"wkt":{"d":"20s"}}`, m)
 	assert.Nil(t, err)
 	assert.Equal(t, 20*time.Second, m.Wkt.D.AsDuration())
-
 }

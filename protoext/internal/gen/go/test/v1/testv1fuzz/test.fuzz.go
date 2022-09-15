@@ -318,6 +318,7 @@ func FuzzMap(x *v1.Map, f gofuzz.Continue) {
 	f.Fuzz(&x.By)
 	f.Fuzz(&x.Bo)
 	f.Fuzz(&x.An)
+	f.Fuzz(&x.Bn)
 }
 
 // FuzzNested is a fuzz function.
