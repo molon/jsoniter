@@ -4,6 +4,7 @@ import (
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/modern-go/reflect2"
 )
 
 type stringModeNumberEncoder struct {
@@ -60,4 +61,17 @@ type funcDecoder struct {
 
 func (decoder *funcDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 	decoder.fun(ptr, iter)
+}
+
+type dynamicEncoder struct {
+	valType reflect2.Type
+}
+
+func (encoder *dynamicEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	obj := encoder.valType.UnsafeIndirect(ptr)
+	stream.WriteVal(obj)
+}
+
+func (encoder *dynamicEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+	return encoder.valType.UnsafeIndirect(ptr) == nil
 }

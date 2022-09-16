@@ -77,15 +77,8 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 	}
 
 	if !e.UseEnumNumbers {
-		if typ.Implements(protoEnumType) {
+		if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
 			// TODO: 如果直接是 interface 呢？
-			if typ.Kind() == reflect.Ptr {
-				return &jsoniter.OptionalEncoder{
-					ValueEncoder: &protoEnumNameEncoder{
-						elemType: typ.(reflect2.PtrType).Elem(),
-					},
-				}
-			}
 			return &protoEnumNameEncoder{
 				elemType: typ,
 			}
@@ -108,16 +101,7 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 	}
 
 	// we want fuzzy decode, so does not need to check e.UseEnumNumbers
-	if typ.Implements(protoEnumType) {
-		if typ.Kind() == reflect.Ptr {
-			elem := typ.(reflect2.PtrType).Elem()
-			return &jsoniter.OptionalDecoder{
-				ValueType: elem,
-				ValueDecoder: &protoEnumDecoder{
-					elemType: elem,
-				},
-			}
-		}
+	if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
 		return &protoEnumDecoder{
 			elemType: typ,
 		}
@@ -131,7 +115,17 @@ var wellKnown64BitIntegerTypes = map[reflect2.Type]bool{
 	reflect2.TypeOf((*wrapperspb.UInt64Value)(nil)): true,
 }
 
-// TODO: map<int64, string> str = 3; 下有问题，会过度的加括号
+func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEncoder {
+	if e.Encode64BitAsInteger {
+		return nil
+	}
+	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
+		// avoid quote it repeatedly
+		return &dynamicEncoder{typ}
+	}
+	return nil
+}
+
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	if e.Encode64BitAsInteger {
 		return encoder

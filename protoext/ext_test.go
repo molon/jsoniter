@@ -10,6 +10,7 @@ import (
 	"github.com/json-iterator/go/extra"
 	"github.com/json-iterator/go/protoext"
 	testv1 "github.com/json-iterator/go/protoext/internal/gen/go/test/v1"
+	"github.com/modern-go/reflect2"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -89,7 +90,7 @@ func TestCompareStdAndProto(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, `{"i64":1502878518952376288,"i64S":[1502878518952376289,1502878518952376290,1502878518952376291],"i64P":1502878518952376288,"i64PS":[1502878518952376288,null]}`, jsn)
 
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	jsn, err = cfg.MarshalToString(s)
@@ -156,7 +157,7 @@ func TestJsonName(t *testing.T) {
 		UpwerCamelCase: "UpwerCamelCase✅",
 	}
 
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	jsnA, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
@@ -178,7 +179,7 @@ func TestJsonName(t *testing.T) {
 	// UseProtoNames: true
 	m.SnakeCase = "snake_case✅"
 
-	cfg = jsoniter.Config{}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{UseProtoNames: true})
 	jsnA, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
@@ -211,18 +212,18 @@ func TestEmitUnpopulated(t *testing.T) {
 		},
 	}
 
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	commonCheck(t, cfg, &protojson.MarshalOptions{}, m)
 
-	cfg = jsoniter.Config{}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	cfg.RegisterExtension(&extra.EmitEmptyWithBindingExtension{Filter: protoext.ProtoEmitUnpopulated})
+	cfg.RegisterExtension(&extra.EmitEmptyExtension{Filter: protoext.ProtoEmitUnpopulated})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
 
 func TestEnum(t *testing.T) {
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	var err error
@@ -283,7 +284,7 @@ func TestEnum(t *testing.T) {
 	assert.Equal(t, `{"r":{"e":["JSON_ENUM_SOME","JSON_ENUM_UNSPECIFIED"]}}`, jsn)
 
 	// UseEnumNumbers: true
-	cfg = jsoniter.Config{}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{UseEnumNumbers: true})
 
 	m = &testv1.All{
@@ -299,7 +300,7 @@ func TestEnum(t *testing.T) {
 }
 
 func TestOneof(t *testing.T) {
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	var err error
@@ -327,7 +328,7 @@ func TestOneof(t *testing.T) {
 	// TODO: 考虑内部不使用 reflect 方法去设置
 	assert.True(t, proto.Equal(m, m2))
 
-	// 	cfg := jsoniter.Config{}.Froze()
+	// 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	// 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	// 	// cfg.RegisterExtension(&protoext.EmitEmptyWithTypeExtension{})
 
@@ -385,7 +386,7 @@ func TestOneof(t *testing.T) {
 }
 
 func TestInteger64AsString(t *testing.T) {
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	i64 := int64(-224123123123123123)
@@ -429,21 +430,27 @@ func TestInteger64AsString(t *testing.T) {
 				I64: wrapperspb.Int64(-999),
 			},
 		},
+		M: &testv1.Map{
+			Str: map[int64]string{
+				101010: "helloworld",
+				202020: "hellogod",
+			},
+		},
 	}
 	jsn, err := cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"r":{"i64":["-12","-23"],"u64":["22","33"]},"s":{"i64":"-123123123123123123","u64":"12312312321312312"},"oF":{"i64":"-786"},"oWkt":{"i64":"-999"},"wkt":{"i64":"-333","u64":"0"},"o":{"i64":"-224123123123123123","u64":"22412312321312312"},"rWkt":{"i64":["-333","444"],"u64":["555","666"]},"optWkt":{"i64":"-777","u64":"888"}}`, jsn)
+	assert.Equal(t, `{"r":{"i64":["-12","-23"],"u64":["22","33"]},"s":{"i64":"-123123123123123123","u64":"12312312321312312"},"oF":{"i64":"-786"},"oWkt":{"i64":"-999"},"wkt":{"i64":"-333","u64":"0"},"o":{"i64":"-224123123123123123","u64":"22412312321312312"},"rWkt":{"i64":["-333","444"],"u64":["555","666"]},"m":{"str":{"101010":"helloworld","202020":"hellogod"}},"optWkt":{"i64":"-777","u64":"888"}}`, jsn)
 	commonCheck(t, cfg, nil, m)
 	m.OF.OneOf = &testv1.OneOf_U64{
 		U64: 890,
 	}
 	commonCheck(t, cfg, nil, m)
 
-	cfg = jsoniter.Config{}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{Encode64BitAsInteger: true})
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"r":{"i64":[-12,-23],"u64":[22,33]},"s":{"i64":-123123123123123123,"u64":12312312321312312},"oF":{"u64":890},"oWkt":{"i64":-999},"wkt":{"i64":-333,"u64":0},"o":{"i64":-224123123123123123,"u64":22412312321312312},"rWkt":{"i64":[-333,444],"u64":[555,666]},"optWkt":{"i64":-777,"u64":888}}`, jsn)
+	assert.Equal(t, `{"r":{"i64":[-12,-23],"u64":[22,33]},"s":{"i64":-123123123123123123,"u64":12312312321312312},"oF":{"u64":890},"oWkt":{"i64":-999},"wkt":{"i64":-333,"u64":0},"o":{"i64":-224123123123123123,"u64":22412312321312312},"rWkt":{"i64":[-333,444],"u64":[555,666]},"m":{"str":{"101010":"helloworld","202020":"hellogod"}},"optWkt":{"i64":-777,"u64":888}}`, jsn)
 
 	// TIPS: protjson does not support Encode64BitAsInteger, so we does not need to check marshal result
 	// but it support fuzzy unmarshal
@@ -451,10 +458,49 @@ func TestInteger64AsString(t *testing.T) {
 	err = pUnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(m, m2))
+
+	// test map keys with 64bit
+	mm := struct {
+		M1 map[int64]uint64
+		M2 map[uint64]int64
+	}{
+		M1: map[int64]uint64{-1: 10, -2: 20, -3: 30},
+		M2: map[uint64]int64{1: -10, 2: -20, 3: -30},
+	}
+	jsn, err = cfg.MarshalToString(mm)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"M1":{"-1":10,"-2":20,"-3":30},"M2":{"1":-10,"2":-20,"3":-30}}`, jsn)
+
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	jsn, err = cfg.MarshalToString(mm)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"M1":{"-1":"10","-2":"20","-3":"30"},"M2":{"1":"-10","2":"-20","3":"-30"}}`, jsn)
+}
+
+func TestXXX(t *testing.T) {
+	mm := struct {
+		M1 map[int64]uint64
+		M2 map[uint64]int64
+	}{
+		M1: map[int64]uint64{-1: 10, -2: 20, -3: 30},
+		M2: map[uint64]int64{1: -10, 2: -20, 3: -30},
+	}
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	jsn, err := cfg.MarshalToString(mm)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"M1":{"-1":"10","-2":"20","-3":"30"},"M2":{"1":"-10","2":"-20","3":"-30"}}`, jsn)
+	jsn, err = cfg.MarshalToString(mm)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"M1":{"-1":"10","-2":"20","-3":"30"},"M2":{"1":"-10","2":"-20","3":"-30"}}`, jsn)
+	jsn, err = cfg.MarshalToString(mm)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"M1":{"-1":"10","-2":"20","-3":"30"},"M2":{"1":"-10","2":"-20","3":"-30"}}`, jsn)
 }
 
 func TestUnmarshalExistWkt(t *testing.T) {
-	cfg := jsoniter.Config{}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	var err error
@@ -463,7 +509,9 @@ func TestUnmarshalExistWkt(t *testing.T) {
 			D: durationpb.New(30 * time.Second),
 		},
 	}
+	origP := reflect2.PtrOf(m.Wkt.D)
 	err = cfg.UnmarshalFromString(`{"wkt":{"d":"20s"}}`, m)
 	assert.Nil(t, err)
 	assert.Equal(t, 20*time.Second, m.Wkt.D.AsDuration())
+	assert.Equal(t, origP, reflect2.PtrOf(m.Wkt.D))
 }
