@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -19,8 +18,7 @@ const (
 	Duration_message_fullname protoreflect.FullName = "google.protobuf.Duration"
 )
 
-var durationCodec = NewPtrTypeCodec(
-	reflect2.TypeOfPtr((*durationpb.Duration)(nil)),
+var durationCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		s, err := marshalDuration(((*durationpb.Duration)(ptr)))
 		if err != nil {

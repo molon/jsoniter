@@ -12,58 +12,38 @@ import (
 )
 
 type protojsonEncoder struct {
-	ptrType reflect2.Type
+	valueType reflect2.Type
 }
 
 func (enc *protojsonEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	if *((*unsafe.Pointer)(ptr)) == nil {
-		stream.WriteNil()
-		return
-	}
-	data, err := protojson.Marshal(enc.ptrType.UnsafeIndirect(ptr).(proto.Message))
+	data, err := protojson.Marshal(enc.valueType.PackEFace(ptr).(proto.Message))
 	if err != nil {
-		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", enc.ptrType, err)
+		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", reflect2.PtrTo(enc.valueType), err)
 		return
 	}
 	_, stream.Error = stream.Write(data)
 }
 
 func (enc *protojsonEncoder) IsEmpty(ptr unsafe.Pointer) bool {
-	return *((*unsafe.Pointer)(ptr)) == nil
+	// protojson will not omit zero value, only omit zero pointer, we stay compatible,
+	return false
 }
 
 type protojsonDecoder struct {
-	ptrType  reflect2.Type
-	elemType reflect2.Type
+	valueType reflect2.Type
 }
 
 func (dec *protojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-	if iter.ReadNil() {
-		*((*unsafe.Pointer)(ptr)) = nil
-	} else {
-		bytes := iter.SkipAndReturnBytes()
-		if iter.Error != nil && iter.Error != io.EOF {
-			return
-		}
+	bytes := iter.SkipAndReturnBytes()
+	if iter.Error != nil && iter.Error != io.EOF {
+		return
+	}
 
-		if *((*unsafe.Pointer)(ptr)) == nil {
-			elem := dec.elemType.UnsafeNew()
-			err := protojson.Unmarshal(bytes, dec.elemType.PackEFace(elem).(proto.Message))
-			if err != nil {
-				iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
-					"errorr calling protojson.Unmarshal for type %s: %s",
-					dec.ptrType, err,
-				))
-			}
-			*((*unsafe.Pointer)(ptr)) = elem
-		} else {
-			err := protojson.Unmarshal(bytes, dec.ptrType.UnsafeIndirect(ptr).(proto.Message))
-			if err != nil {
-				iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
-					"error calling protojson.Unmarshal for type %s: %s",
-					dec.ptrType, err,
-				))
-			}
-		}
+	err := protojson.Unmarshal(bytes, dec.valueType.PackEFace(ptr).(proto.Message))
+	if err != nil {
+		iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
+			"error calling protojson.Unmarshal for type %s: %s",
+			reflect2.PtrTo(dec.valueType), err,
+		))
 	}
 }

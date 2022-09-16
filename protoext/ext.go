@@ -72,7 +72,7 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 		}
 		// If not specified, use protojson for processing
 		return &protojsonEncoder{
-			ptrType: typ,
+			valueType: typ,
 		}
 	}
 
@@ -80,7 +80,7 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 		if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
 			// TODO: 如果直接是 interface 呢？
 			return &protoEnumNameEncoder{
-				elemType: typ,
+				valueType: typ,
 			}
 		}
 	}
@@ -95,15 +95,14 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 		}
 		// If not specified, use protojson for processing
 		return &protojsonDecoder{
-			ptrType:  typ,
-			elemType: typ.(reflect2.PtrType).Elem(),
+			valueType: typ,
 		}
 	}
 
 	// we want fuzzy decode, so does not need to check e.UseEnumNumbers
 	if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
 		return &protoEnumDecoder{
-			elemType: typ,
+			valueType: typ,
 		}
 	}
 
@@ -111,8 +110,8 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 }
 
 var wellKnown64BitIntegerTypes = map[reflect2.Type]bool{
-	reflect2.TypeOf((*wrapperspb.Int64Value)(nil)):  true,
-	reflect2.TypeOf((*wrapperspb.UInt64Value)(nil)): true,
+	reflect2.TypeOfPtr((*wrapperspb.Int64Value)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*wrapperspb.UInt64Value)(nil)).Elem(): true,
 }
 
 func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEncoder {

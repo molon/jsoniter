@@ -12,13 +12,9 @@ type stringModeNumberEncoder struct {
 }
 
 func (encoder *stringModeNumberEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	if *((*unsafe.Pointer)(ptr)) == nil {
-		stream.WriteNil()
-	} else {
-		stream.Write([]byte(`"`))
-		encoder.elemEncoder.Encode(ptr, stream)
-		stream.Write([]byte(`"`))
-	}
+	stream.Write([]byte(`"`))
+	encoder.elemEncoder.Encode(ptr, stream)
+	stream.Write([]byte(`"`))
 }
 
 func (encoder *stringModeNumberEncoder) IsEmpty(ptr unsafe.Pointer) bool {

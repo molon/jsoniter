@@ -3,6 +3,7 @@ package protoext
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -14,7 +15,9 @@ import (
 var protoEnumType = reflect2.TypeOfPtr((*protoreflect.Enum)(nil)).Elem()
 
 type protoEnumNameEncoder struct {
-	elemType reflect2.Type
+	valueType reflect2.Type
+	once      sync.Once
+	enumDesc  protoreflect.EnumDescriptor
 }
 
 // Full name for google.protobuf.NullValue.
@@ -23,12 +26,15 @@ const (
 )
 
 func (enc *protoEnumNameEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	x := enc.elemType.UnsafeIndirect(ptr).(protoreflect.Enum)
-	if x.Descriptor().FullName() == NullValue_enum_fullname {
+	x := enc.valueType.UnsafeIndirect(ptr).(protoreflect.Enum)
+	enc.once.Do(func() {
+		enc.enumDesc = x.Descriptor()
+	})
+	if enc.enumDesc.FullName() == NullValue_enum_fullname {
 		stream.WriteNil()
 		return
 	}
-	stream.WriteString(protoimpl.X.EnumStringOf(x.Descriptor(), x.Number()))
+	stream.WriteString(protoimpl.X.EnumStringOf(enc.enumDesc, x.Number()))
 }
 
 func (enc *protoEnumNameEncoder) IsEmpty(ptr unsafe.Pointer) bool {
@@ -36,7 +42,9 @@ func (enc *protoEnumNameEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 }
 
 type protoEnumDecoder struct {
-	elemType reflect2.Type
+	valueType    reflect2.Type
+	once         sync.Once
+	enumValDescs protoreflect.EnumValueDescriptors
 }
 
 func (dec *protoEnumDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
@@ -46,9 +54,12 @@ func (dec *protoEnumDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 		num := iter.ReadInt32()
 		*((*protoreflect.EnumNumber)(ptr)) = protoreflect.EnumNumber(num)
 	case jsoniter.StringValue:
-		x := dec.elemType.UnsafeIndirect(ptr).(protoreflect.Enum)
 		name := iter.ReadString()
-		ev := x.Descriptor().Values().ByName(protoreflect.Name(name))
+		dec.once.Do(func() {
+			x := dec.valueType.UnsafeIndirect(ptr).(protoreflect.Enum)
+			dec.enumValDescs = x.Descriptor().Values()
+		})
+		ev := dec.enumValDescs.ByName(protoreflect.Name(name))
 		if ev != nil {
 			*((*protoreflect.EnumNumber)(ptr)) = ev.Number()
 		} else {
@@ -59,7 +70,7 @@ func (dec *protoEnumDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 			} else {
 				iter.ReportError("DecodeProtoEnum", fmt.Sprintf(
 					"error decode from string for type %s",
-					dec.elemType,
+					dec.valueType,
 				))
 			}
 		}
@@ -69,7 +80,7 @@ func (dec *protoEnumDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 	default:
 		iter.ReportError("DecodeProtoEnum", fmt.Sprintf(
 			"error decode for type %s",
-			dec.elemType,
+			dec.valueType,
 		))
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -18,8 +17,7 @@ const (
 	Timestamp_message_fullname protoreflect.FullName = "google.protobuf.Timestamp"
 )
 
-var timestampCodec = NewPtrTypeCodec(
-	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)),
+var timestampCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		s, err := marshalTimestamp(((*timestamppb.Timestamp)(ptr)))
 		if err != nil {
