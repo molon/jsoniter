@@ -30,7 +30,7 @@ var durationCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		s := iter.ReadString()
 		if err := unmarshalDuration(s, (*durationpb.Duration)(ptr)); err != nil {
-			iter.ReportError("decode", err.Error())
+			iter.ReportError("protobuf", err.Error())
 			return
 		}
 	},

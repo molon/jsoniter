@@ -41,7 +41,7 @@ func (dec *protojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 
 	err := protojson.Unmarshal(bytes, dec.valueType.PackEFace(ptr).(proto.Message))
 	if err != nil {
-		iter.ReportError("protojson.Unmarshal", fmt.Sprintf(
+		iter.ReportError("protobuf", fmt.Sprintf(
 			"error calling protojson.Unmarshal for type %s: %s",
 			reflect2.PtrTo(dec.valueType), err,
 		))

@@ -106,7 +106,7 @@ var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 			}
 			b, err := enc.DecodeString(s)
 			if err != nil {
-				iter.ReportError("decode", fmt.Sprintf("google.protobuf.BytesValue: %v", err))
+				iter.ReportError("protobuf", fmt.Sprintf("google.protobuf.BytesValue: %v", err))
 				return
 			}
 			(*wrapperspb.BytesValue)(ptr).Value = b

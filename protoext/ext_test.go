@@ -215,6 +215,34 @@ func TestUnmarshalExistWkt(t *testing.T) {
 	assert.Equal(t, origP, reflect2.PtrOf(m.Wkt.D))
 }
 
+func TestNullValueEnum(t *testing.T) {
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	nu := structpb.NullValue_NULL_VALUE
+	// var err error
+	m := &testv1.All{
+		OptWkt: &testv1.WKTOptionals{
+			Nu: &nu,
+		},
+	}
+
+	var err error
+	var jsnA, jsnB string
+
+	jsnA, err = cfg.MarshalToString(m)
+	assert.Nil(t, err)
+	jsnB, err = pMarshalToString(m)
+	assert.Nil(t, err)
+	assert.Equal(t, jsnA, jsnB)
+
+	m2 := &testv1.All{}
+	err = cfg.UnmarshalFromString(jsnA, m2)
+	assert.Nil(t, err)
+	assert.Equal(t, structpb.NullValue_NULL_VALUE, *(m2.OptWkt.Nu))
+	assert.True(t, proto.Equal(m, m2))
+}
+
 func TestEnum(t *testing.T) {
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})

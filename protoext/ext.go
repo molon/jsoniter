@@ -100,9 +100,15 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 	}
 
 	// we want fuzzy decode, so does not need to check e.UseEnumNumbers
-	if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
-		return &protoEnumDecoder{
-			valueType: typ,
+	if typ.Implements(protoEnumType) {
+		if typ.Kind() != reflect.Ptr {
+			return &protoEnumDecoder{
+				valueType: typ,
+			}
+		}
+
+		if decoder := createDecoderOfNullValueEnumPtr(typ); decoder != nil {
+			return decoder
 		}
 	}
 

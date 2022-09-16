@@ -29,7 +29,7 @@ var timestampCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		s := iter.ReadString()
 		if err := unmarshalTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
-			iter.ReportError("decode", err.Error())
+			iter.ReportError("protobuf", err.Error())
 			return
 		}
 	},
