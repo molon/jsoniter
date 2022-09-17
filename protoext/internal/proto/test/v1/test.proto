@@ -39,20 +39,22 @@ message Case {
 
   bytes b1 = 21;
   bytes b2 = 22;
-  optional bytes opt_b = 23;
-  repeated bytes rpt_b = 24;
-  map<string,bytes> map_b = 25;
+  optional bytes opt_b1 = 23;
+  optional bytes opt_b2 = 24;
+  repeated bytes rpt_b = 25;
+  map<string,bytes> map_b = 26;
 
   google.protobuf.BytesValue wkt_b1 = 31;
   google.protobuf.BytesValue wkt_b2 = 32;
-  optional google.protobuf.BytesValue opt_wkt_b = 33;
-  repeated google.protobuf.BytesValue rpt_wkt_b = 34;
-  map<string,google.protobuf.BytesValue> map_wkt_b = 35;
+  optional google.protobuf.BytesValue opt_wkt_b1 = 33;
+  optional google.protobuf.BytesValue opt_wkt_b2 = 34;
+  repeated google.protobuf.BytesValue rpt_wkt_b = 35;
+  map<string,google.protobuf.BytesValue> map_wkt_b = 36;
 
   oneof one_of {
     google.protobuf.Int32Value oneof_wkt_i32 = 9;
-    bytes oneof_b = 26;
-    google.protobuf.BytesValue oneof_wkt_b = 36;
+    bytes oneof_b = 27;
+    google.protobuf.BytesValue oneof_wkt_b = 37;
   }
 }
 

@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -89,6 +90,25 @@ func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDes
 				case "json":
 					jsonName = strings.TrimSpace(colons[1])
 				}
+				continue
+			}
+			if strings.TrimSpace(part) == "oneof" {
+				if reflect2.PtrTo(c.Type).Implements(protoMessageType) {
+					if pb == nil {
+						pb = c.Type.New().(proto.Message)
+						pbReflect = pb.ProtoReflect()
+					}
+					od := pbReflect.Descriptor().Fields().ByName(protoreflect.Name(name))
+					if od != nil {
+						oneof := od.ContainingOneof()
+						// IsSynthetic OneOf (optional keyword)
+						if oneof != nil && oneof.IsSynthetic() {
+							binding.Encoder = &extra.ImmunityEmitEmptyEncoder{
+								&protoOptionalEncoder{binding.Encoder},
+							}
+						}
+					}
+				}
 			}
 		}
 		if jsonName == "" {
@@ -112,6 +132,29 @@ func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDes
 			}
 		}
 	}
+}
+
+type protoOptionalEncoder struct {
+	jsoniter.ValEncoder
+}
+
+func (enc *protoOptionalEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	enc.ValEncoder.Encode(ptr, stream)
+}
+
+func (enc *protoOptionalEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+	return enc.ValEncoder.IsEmpty(ptr)
+}
+
+func (enc *protoOptionalEncoder) IsEmbeddedPtrNil(ptr unsafe.Pointer) bool {
+	if *((*unsafe.Pointer)(ptr)) == nil {
+		return true
+	}
+	isEmbeddedPtrNil, converted := enc.ValEncoder.(jsoniter.IsEmbeddedPtrNil)
+	if !converted {
+		return false
+	}
+	return isEmbeddedPtrNil.IsEmbeddedPtrNil(ptr)
 }
 
 type protoOneofWrapperEncoder struct {
