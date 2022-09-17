@@ -17,6 +17,10 @@ import (
 var protoMessageType = reflect2.TypeOfPtr((*proto.Message)(nil)).Elem()
 
 func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDescriptorConstructor) {
+	if !reflect2.PtrTo(c.Type).Implements(protoMessageType) {
+		return
+	}
+
 	newBindings := make([]*jsoniter.Binding, 0, len(c.Bindings))
 	defer func() {
 		c.Bindings = newBindings
@@ -29,7 +33,7 @@ func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDes
 
 		if field.Type().Kind() == reflect.Interface {
 			oneofsTag, hasOneofsTag := field.Tag().Lookup("protobuf_oneof")
-			if hasOneofsTag && reflect2.PtrTo(c.Type).Implements(protoMessageType) {
+			if hasOneofsTag {
 				if pb == nil {
 					pb = c.Type.New().(proto.Message)
 					pbReflect = pb.ProtoReflect()
@@ -73,62 +77,36 @@ func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDes
 			continue
 		}
 
-		// Because oneof wrapper does not satisfy proto.Message, we can only check with tag instead of protoreflect here
 		tag, hastag := binding.Field.Tag().Lookup("protobuf")
 		if !hastag {
 			continue
 		}
 
-		var name, jsonName string
+		var name string
 		tagParts := strings.Split(tag, ",")
 		for _, part := range tagParts {
 			colons := strings.SplitN(part, "=", 2)
 			if len(colons) == 2 {
-				switch strings.TrimSpace(colons[0]) {
-				case "name":
+				if strings.TrimSpace(colons[0]) == "name" {
 					name = strings.TrimSpace(colons[1])
-				case "json":
-					jsonName = strings.TrimSpace(colons[1])
 				}
 				continue
 			}
 			if strings.TrimSpace(part) == "oneof" {
-				if reflect2.PtrTo(c.Type).Implements(protoMessageType) {
-					if pb == nil {
-						pb = c.Type.New().(proto.Message)
-						pbReflect = pb.ProtoReflect()
-					}
-					od := pbReflect.Descriptor().Fields().ByName(protoreflect.Name(name))
-					if od != nil {
-						oneof := od.ContainingOneof()
-						// IsSynthetic OneOf (optional keyword)
-						if oneof != nil && oneof.IsSynthetic() {
-							binding.Encoder = &extra.ImmunityEmitEmptyEncoder{
-								&protoOptionalEncoder{binding.Encoder},
-							}
+				if pb == nil {
+					pb = c.Type.New().(proto.Message)
+					pbReflect = pb.ProtoReflect()
+				}
+				od := pbReflect.Descriptor().Fields().ByName(protoreflect.Name(name))
+				if od != nil {
+					oneof := od.ContainingOneof()
+					// IsSynthetic OneOf (optional keyword)
+					if oneof != nil && oneof.IsSynthetic() {
+						binding.Encoder = &extra.ImmunityEmitEmptyEncoder{
+							&protoOptionalEncoder{binding.Encoder},
 						}
 					}
 				}
-			}
-		}
-		if jsonName == "" {
-			jsonName = name
-		}
-		if name != "" {
-			if e.UseProtoNames {
-				binding.FromNames = []string{name}
-				// fuzzy
-				if jsonName != name {
-					binding.FromNames = append(binding.FromNames, jsonName)
-				}
-				binding.ToNames = []string{name}
-			} else {
-				binding.FromNames = []string{jsonName}
-				// fuzzy
-				if name != jsonName {
-					binding.FromNames = append(binding.FromNames, name)
-				}
-				binding.ToNames = []string{jsonName}
 			}
 		}
 	}

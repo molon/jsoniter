@@ -2,8 +2,10 @@ package protoext
 
 import (
 	"reflect"
+	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -12,6 +14,7 @@ import (
 type ProtoExtension struct {
 	jsoniter.DummyExtension
 
+	EmitUnpopulated      bool
 	UseEnumNumbers       bool
 	UseProtoNames        bool
 	Encode64BitAsInteger bool
@@ -109,4 +112,57 @@ func (e *ProtoExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.Val
 		return &stringModeNumberDecoder{decoder}
 	}
 	return decoder
+}
+
+func (e *ProtoExtension) UpdateStructDescriptor(desc *jsoniter.StructDescriptor) {
+	for _, binding := range desc.Fields {
+		if len(binding.FromNames) <= 0 { // simple check should exported
+			continue
+		}
+
+		// Because oneof wrapper does not satisfy proto.Message, we can only check with tag instead of protoreflect here
+		tag, hastag := binding.Field.Tag().Lookup("protobuf")
+		if !hastag {
+			continue
+		}
+
+		if e.EmitUnpopulated {
+			binding.Encoder = &extra.EmitEmptyEncoder{binding.Encoder}
+		}
+
+		var name, jsonName string
+		tagParts := strings.Split(tag, ",")
+		for _, part := range tagParts {
+			colons := strings.SplitN(part, "=", 2)
+			if len(colons) == 2 {
+				switch strings.TrimSpace(colons[0]) {
+				case "name":
+					name = strings.TrimSpace(colons[1])
+				case "json":
+					jsonName = strings.TrimSpace(colons[1])
+				}
+				continue
+			}
+		}
+		if jsonName == "" {
+			jsonName = name
+		}
+		if name != "" {
+			if e.UseProtoNames {
+				binding.FromNames = []string{name}
+				// fuzzy
+				if jsonName != name {
+					binding.FromNames = append(binding.FromNames, jsonName)
+				}
+				binding.ToNames = []string{name}
+			} else {
+				binding.FromNames = []string{jsonName}
+				// fuzzy
+				if name != jsonName {
+					binding.FromNames = append(binding.FromNames, name)
+				}
+				binding.ToNames = []string{jsonName}
+			}
+		}
+	}
 }

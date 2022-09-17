@@ -146,8 +146,7 @@ func TestEmitUnpopulated(t *testing.T) {
 	commonCheck(t, cfg, &protojson.MarshalOptions{}, m)
 
 	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	cfg.RegisterExtension(&extra.EmitEmptyExtension{Filter: protoext.ProtoEmitUnpopulated})
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
 
@@ -578,7 +577,6 @@ func TestPointerArray(t *testing.T) {
 	log.Println(string(jsn) + "\n")
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	cfg.RegisterExtension(&extra.EmitEmptyExtension{Filter: protoext.ProtoEmitUnpopulated})
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
