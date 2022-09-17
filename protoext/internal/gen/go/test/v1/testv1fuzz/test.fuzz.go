@@ -9,6 +9,43 @@ import (
 	v1 "github.com/json-iterator/go/protoext/internal/gen/go/test/v1"
 )
 
+// FuzzCase is a fuzz function.
+// If can be registered using `Fuzzer.Funcs` function.
+func FuzzCase(x *v1.Case, f gofuzz.Continue) {
+	f.Fuzz(&x.WktI32A)
+	f.Fuzz(&x.WktI32B)
+	f.Fuzz(&x.OptI32A)
+	f.Fuzz(&x.OptI32B)
+	f.Fuzz(&x.OptWktI32A)
+	f.Fuzz(&x.OptWktI32B)
+	f.Fuzz(&x.RptWktI32)
+	f.Fuzz(&x.MapWktI32)
+	f.Fuzz(&x.B1)
+	f.Fuzz(&x.B2)
+	f.Fuzz(&x.OptB)
+	f.Fuzz(&x.RptB)
+	f.Fuzz(&x.MapB)
+	f.Fuzz(&x.WktB1)
+	f.Fuzz(&x.WktB2)
+	f.Fuzz(&x.OptWktB)
+	f.Fuzz(&x.RptWktB)
+	f.Fuzz(&x.MapWktB)
+	switch f.Int31n(4) {
+	case 0:
+		var o v1.Case_OneofWktI32
+		f.Fuzz(&o.OneofWktI32)
+		x.OneOf = &o
+	case 1:
+		var o v1.Case_OneofB
+		f.Fuzz(&o.OneofB)
+		x.OneOf = &o
+	case 2:
+		var o v1.Case_OneofWktB
+		f.Fuzz(&o.OneofWktB)
+		x.OneOf = &o
+	}
+}
+
 // FuzzAll is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzAll(x *v1.All, f gofuzz.Continue) {

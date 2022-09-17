@@ -7,6 +7,7 @@ func FuzzFuncs() []any {
 }
 
 var ff = [...]any{
+	FuzzCase,
 	FuzzAll,
 	FuzzRepeated,
 	FuzzOptionals,

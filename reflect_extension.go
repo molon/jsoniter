@@ -350,15 +350,15 @@ func describeStruct(ctx *ctx, typ reflect2.Type) *StructDescriptor {
 
 		// proto oneof embedded begin
 		if field.Type().Kind() == reflect.Interface {
-			oneofTag, hasOneofTag := field.Tag().Lookup("protobuf_oneof")
-			if hasOneofTag && reflect2.PtrTo(typ).Implements(protoMessageType) {
+			oneofsTag, hasOneofsTag := field.Tag().Lookup("protobuf_oneof")
+			if hasOneofsTag && reflect2.PtrTo(typ).Implements(protoMessageType) {
 				if pb == nil {
 					pb = typ.New().(proto.Message)
 					pbReflect = pb.ProtoReflect()
 				}
 				fieldType := field.Type()
 				fieldPtr := field.UnsafeGet(reflect2.PtrOf(pb))
-				od := pbReflect.Descriptor().Oneofs().ByName(protoreflect.Name(oneofTag))
+				od := pbReflect.Descriptor().Oneofs().ByName(protoreflect.Name(oneofsTag))
 				if !od.IsSynthetic() { // ignore optional
 					fds := od.Fields()
 					for j := 0; j < fds.Len(); j++ {
