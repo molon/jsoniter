@@ -541,6 +541,17 @@ func TestPointerArray(t *testing.T) {
 			"keyA": wrapperspb.Bytes(nil),
 			"keyB": wrapperspb.Bytes([]byte(`HIJ`)),
 		},
+
+		RptMsg: []*testv1.Message{
+			&testv1.Message{Id: "id1"},
+			nil,
+			&testv1.Message{Id: "id3"},
+		},
+		MapMsg: map[string]*testv1.Message{
+			"msgA": &testv1.Message{Id: "ida"},
+			"msgB": nil,
+			"msgC": &testv1.Message{Id: "idc"},
+		},
 	}
 
 	mOpt := protojson.MarshalOptions{EmitUnpopulated: true}
@@ -569,12 +580,12 @@ func TestPointerArray(t *testing.T) {
 	assert.Nil(t, err)
 	log.Println(string(jsn) + "\n")
 
-	m.OneOf = &testv1.Case_OneofWktB{
-		OneofWktB: wrapperspb.Bytes(nil),
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
+	// m.OneOf = &testv1.Case_OneofWktB{
+	// 	OneofWktB: wrapperspb.Bytes(nil),
+	// }
+	// jsn, err = mOpt.Marshal(m)
+	// assert.Nil(t, err)
+	// log.Println(string(jsn) + "\n")
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})

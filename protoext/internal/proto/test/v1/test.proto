@@ -11,23 +11,6 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
 message Case {
-  // int32 i32 = 1;
-  // int64 i64 = 2;
-  // google.protobuf.Int32Value wkt_i32 = 3;
-  // google.protobuf.Int64Value wkt_i64 = 4;
-  // optional int32 opt_i32 = 5;
-  // optional int64 opt_i64 = 6;
-  // optional google.protobuf.Int32Value opt_wkt_i32 = 7;
-  // optional google.protobuf.Int64Value opt_wkt_i64 = 8;
-  // repeated int32 rpt_i32 = 9;
-  // repeated int64 rpt_i64 = 10;
-  // repeated google.protobuf.Int32Value rpt_wkt_i32 = 11;
-  // repeated google.protobuf.Int64Value rpt_wkt_i64 = 12; 
-  // map<string,int32> map_i32 = 13;
-  // map<string,int64> map_i64 = 14;
-  // map<string,google.protobuf.Int32Value> map_wkt_i32 = 15;
-  // map<string,google.protobuf.Int64Value> map_wkt_i64 = 16; 
-
   google.protobuf.Int32Value wkt_i32_a = 1;
   google.protobuf.Int32Value wkt_i32_b = 2;
   optional int32 opt_i32_a = 3;
@@ -56,6 +39,9 @@ message Case {
     bytes oneof_b = 27;
     google.protobuf.BytesValue oneof_wkt_b = 37;
   }
+
+  repeated Message rpt_msg = 41;
+  map<string,Message> map_msg = 42;
 }
 
 message All {

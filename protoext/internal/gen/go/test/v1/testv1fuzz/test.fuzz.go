@@ -32,6 +32,8 @@ func FuzzCase(x *v1.Case, f gofuzz.Continue) {
 	f.Fuzz(&x.OptWktB2)
 	f.Fuzz(&x.RptWktB)
 	f.Fuzz(&x.MapWktB)
+	f.Fuzz(&x.RptMsg)
+	f.Fuzz(&x.MapMsg)
 	switch f.Int31n(4) {
 	case 0:
 		var o v1.Case_OneofWktI32

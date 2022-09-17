@@ -87,6 +87,23 @@ func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEnco
 }
 
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
+	// TODO: 确定这点也要和protojson保持一致？感觉是它的bug
+	// // marshal nil []byte to ""
+	// if typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
+	// 	return &funcEncoder{
+	// 		fun: func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	// 			if *((*unsafe.Pointer)(ptr)) == nil {
+	// 				stream.Write([]byte{'"', '"'})
+	// 				return
+	// 			}
+	// 			encoder.Encode(ptr, stream)
+	// 		},
+	// 		isEmptyFunc: func(ptr unsafe.Pointer) bool {
+	// 			return encoder.IsEmpty(ptr)
+	// 		},
+	// 	}
+	// }
+
 	if e.Encode64BitAsInteger {
 		return encoder
 	}

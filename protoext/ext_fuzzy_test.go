@@ -60,7 +60,7 @@ func FuzzReadWrite(f *testing.F) {
 	})
 }
 
-func FuzzReadFrom(f *testing.F) {
+func FuzzReadFromProtoJson(f *testing.F) {
 	cfg := jsoniter.Config{}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
@@ -88,7 +88,7 @@ func FuzzReadFrom(f *testing.F) {
 	})
 }
 
-func FuzzWrite(f *testing.F) {
+func FuzzWriteToProtoJson(f *testing.F) {
 	cfg := jsoniter.Config{}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
