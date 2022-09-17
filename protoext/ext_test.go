@@ -3,7 +3,6 @@ package protoext_test
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"testing"
 	"time"
 
@@ -576,132 +575,132 @@ func TestOneof(t *testing.T) {
 // 	// assert.Nil(t, err)
 // }
 
-func TestPointerArray(t *testing.T) {
-	i32 := int32(-123)
-	// i64 := int64(456)
-	m := &testv1.Case{
-		// I32:       i32,
-		// I64:       i64,
-		// WktI32:    nil,
-		// WktI64:    wrapperspb.Int64(i64),
-		// OptI32:    &i32,
-		// OptI64:    &i64,
-		// OptWktI32: nil, // protojson: be omitted even though EmitUnpopulated: true
-		// OptWktI64: wrapperspb.Int64(i64),
-		// RptI32:    []int32{-888, -999},
-		// RptI64:    []int64{888, 999},
-		// RptWktI32: []*wrapperspb.Int32Value{
-		// 	wrapperspb.Int32(-1),
-		// 	wrapperspb.Int32(0),
-		// 	nil, // protojson: marshal to zero value instead with null
-		// 	wrapperspb.Int32(1),
-		// },
-		// RptWktI64: []*wrapperspb.Int64Value{
-		// 	wrapperspb.Int64(-1),
-		// 	wrapperspb.Int64(0),
-		// 	nil, // protojson: marshal to zero value instead with null
-		// 	wrapperspb.Int64(1),
-		// },
-		// MapI32: map[string]int32{
-		// 	"a": -444,
-		// 	"b": -555,
-		// },
-		// MapI64: map[string]int64{
-		// 	"a": 444,
-		// 	"b": 555,
-		// },
-		// MapWktI32: map[string]*wrapperspb.Int32Value{
-		// 	"a": wrapperspb.Int32(-444),
-		// 	"b": nil,
-		// },
-		// MapWktI64: map[string]*wrapperspb.Int64Value{
-		// 	"a": wrapperspb.Int64(444),
-		// 	"b": nil,
-		// },
+// func TestPointerArray(t *testing.T) {
+// 	i32 := int32(-123)
+// 	// i64 := int64(456)
+// 	m := &testv1.Case{
+// 		// I32:       i32,
+// 		// I64:       i64,
+// 		// WktI32:    nil,
+// 		// WktI64:    wrapperspb.Int64(i64),
+// 		// OptI32:    &i32,
+// 		// OptI64:    &i64,
+// 		// OptWktI32: nil, // protojson: be omitted even though EmitUnpopulated: true
+// 		// OptWktI64: wrapperspb.Int64(i64),
+// 		// RptI32:    []int32{-888, -999},
+// 		// RptI64:    []int64{888, 999},
+// 		// RptWktI32: []*wrapperspb.Int32Value{
+// 		// 	wrapperspb.Int32(-1),
+// 		// 	wrapperspb.Int32(0),
+// 		// 	nil, // protojson: marshal to zero value instead with null
+// 		// 	wrapperspb.Int32(1),
+// 		// },
+// 		// RptWktI64: []*wrapperspb.Int64Value{
+// 		// 	wrapperspb.Int64(-1),
+// 		// 	wrapperspb.Int64(0),
+// 		// 	nil, // protojson: marshal to zero value instead with null
+// 		// 	wrapperspb.Int64(1),
+// 		// },
+// 		// MapI32: map[string]int32{
+// 		// 	"a": -444,
+// 		// 	"b": -555,
+// 		// },
+// 		// MapI64: map[string]int64{
+// 		// 	"a": 444,
+// 		// 	"b": 555,
+// 		// },
+// 		// MapWktI32: map[string]*wrapperspb.Int32Value{
+// 		// 	"a": wrapperspb.Int32(-444),
+// 		// 	"b": nil,
+// 		// },
+// 		// MapWktI64: map[string]*wrapperspb.Int64Value{
+// 		// 	"a": wrapperspb.Int64(444),
+// 		// 	"b": nil,
+// 		// },
 
-		// WktI32A    *wrapperspb.Int32Value            `protobuf:"bytes,1,opt,name=wkt_i32_a,json=wktI32A,proto3" json:"wkt_i32_a,omitempty"`
-		// WktI32B    *wrapperspb.Int32Value            `protobuf:"bytes,2,opt,name=wkt_i32_b,json=wktI32B,proto3" json:"wkt_i32_b,omitempty"`
-		// OptI32A    *int32                            `protobuf:"varint,3,opt,name=opt_i32_a,json=optI32A,proto3,oneof" json:"opt_i32_a,omitempty"`
-		// OptI32B    *int32                            `protobuf:"varint,4,opt,name=opt_i32_b,json=optI32B,proto3,oneof" json:"opt_i32_b,omitempty"`
-		// OptWktI32A *wrapperspb.Int32Value            `protobuf:"bytes,5,opt,name=opt_wkt_i32_a,json=optWktI32A,proto3,oneof" json:"opt_wkt_i32_a,omitempty"`
-		// OptWktI32B *wrapperspb.Int32Value            `protobuf:"bytes,6,opt,name=opt_wkt_i32_b,json=optWktI32B,proto3,oneof" json:"opt_wkt_i32_b,omitempty"`
-		// RptWktI32  []*wrapperspb.Int32Value          `protobuf:"bytes,7,rep,name=rpt_wkt_i32,json=rptWktI32,proto3" json:"rpt_wkt_i32,omitempty"`
-		// MapWktI32
+// 		// WktI32A    *wrapperspb.Int32Value            `protobuf:"bytes,1,opt,name=wkt_i32_a,json=wktI32A,proto3" json:"wkt_i32_a,omitempty"`
+// 		// WktI32B    *wrapperspb.Int32Value            `protobuf:"bytes,2,opt,name=wkt_i32_b,json=wktI32B,proto3" json:"wkt_i32_b,omitempty"`
+// 		// OptI32A    *int32                            `protobuf:"varint,3,opt,name=opt_i32_a,json=optI32A,proto3,oneof" json:"opt_i32_a,omitempty"`
+// 		// OptI32B    *int32                            `protobuf:"varint,4,opt,name=opt_i32_b,json=optI32B,proto3,oneof" json:"opt_i32_b,omitempty"`
+// 		// OptWktI32A *wrapperspb.Int32Value            `protobuf:"bytes,5,opt,name=opt_wkt_i32_a,json=optWktI32A,proto3,oneof" json:"opt_wkt_i32_a,omitempty"`
+// 		// OptWktI32B *wrapperspb.Int32Value            `protobuf:"bytes,6,opt,name=opt_wkt_i32_b,json=optWktI32B,proto3,oneof" json:"opt_wkt_i32_b,omitempty"`
+// 		// RptWktI32  []*wrapperspb.Int32Value          `protobuf:"bytes,7,rep,name=rpt_wkt_i32,json=rptWktI32,proto3" json:"rpt_wkt_i32,omitempty"`
+// 		// MapWktI32
 
-		WktI32A:    nil,
-		WktI32B:    wrapperspb.Int32(0),
-		OptI32A:    nil, // protojson: be omitted even though EmitUnpopulated: true
-		OptI32B:    &i32,
-		OptWktI32A: nil, // protojson: be omitted even though EmitUnpopulated: true
-		OptWktI32B: wrapperspb.Int32(0),
-		RptWktI32: []*wrapperspb.Int32Value{
-			wrapperspb.Int32(-1),
-			wrapperspb.Int32(0),
-			nil, // protojson: marshal to zero value instead with null
-			wrapperspb.Int32(1),
-		},
-		MapWktI32: map[string]*wrapperspb.Int32Value{
-			"a": nil,
-			"b": wrapperspb.Int32(0),
-		},
+// 		WktI32A:    nil,
+// 		WktI32B:    wrapperspb.Int32(0),
+// 		OptI32A:    nil, // protojson: be omitted even though EmitUnpopulated: true
+// 		OptI32B:    &i32,
+// 		OptWktI32A: nil, // protojson: be omitted even though EmitUnpopulated: true
+// 		OptWktI32B: wrapperspb.Int32(0),
+// 		RptWktI32: []*wrapperspb.Int32Value{
+// 			wrapperspb.Int32(-1),
+// 			wrapperspb.Int32(0),
+// 			nil, // protojson: marshal to zero value instead with null
+// 			wrapperspb.Int32(1),
+// 		},
+// 		MapWktI32: map[string]*wrapperspb.Int32Value{
+// 			"a": nil,
+// 			"b": wrapperspb.Int32(0),
+// 		},
 
-		B1:   []byte(`abc`),
-		B2:   nil,
-		OptB: nil, // protojson: be omitted even though EmitUnpopulated: true
-		RptB: [][]byte{[]byte(`ABC`), nil, []byte(``), []byte(`EFG`)},
-		MapB: map[string][]byte{"keyA": nil, "keyB": []byte(`HIJ`)},
+// 		B1:   []byte(`abc`),
+// 		B2:   nil,
+// 		OptB: nil, // protojson: be omitted even though EmitUnpopulated: true
+// 		RptB: [][]byte{[]byte(`ABC`), nil, []byte(``), []byte(`EFG`)},
+// 		MapB: map[string][]byte{"keyA": nil, "keyB": []byte(`HIJ`)},
 
-		WktB1:   wrapperspb.Bytes([]byte(`abc`)),
-		WktB2:   nil,
-		OptWktB: nil,
-		RptWktB: []*wrapperspb.BytesValue{
-			wrapperspb.Bytes([]byte(`ABC`)),
-			nil,
-			wrapperspb.Bytes(nil),
-			wrapperspb.Bytes([]byte(``)),
-			wrapperspb.Bytes([]byte(`EFG`)),
-		},
-		MapWktB: map[string]*wrapperspb.BytesValue{
-			"keyA": wrapperspb.Bytes(nil),
-			"keyB": wrapperspb.Bytes([]byte(`HIJ`)),
-		},
-	}
+// 		WktB1:   wrapperspb.Bytes([]byte(`abc`)),
+// 		WktB2:   nil,
+// 		OptWktB: nil,
+// 		RptWktB: []*wrapperspb.BytesValue{
+// 			wrapperspb.Bytes([]byte(`ABC`)),
+// 			nil,
+// 			wrapperspb.Bytes(nil),
+// 			wrapperspb.Bytes([]byte(``)),
+// 			wrapperspb.Bytes([]byte(`EFG`)),
+// 		},
+// 		MapWktB: map[string]*wrapperspb.BytesValue{
+// 			"keyA": wrapperspb.Bytes(nil),
+// 			"keyB": wrapperspb.Bytes([]byte(`HIJ`)),
+// 		},
+// 	}
 
-	mOpt := protojson.MarshalOptions{EmitUnpopulated: true}
-	jsn, err := mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
+// 	mOpt := protojson.MarshalOptions{EmitUnpopulated: true}
+// 	jsn, err := mOpt.Marshal(m)
+// 	assert.Nil(t, err)
+// 	log.Println(string(jsn) + "\n")
 
-	m.OneOf = &testv1.Case_OneofWktI32{
-		OneofWktI32: nil,
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
+// 	m.OneOf = &testv1.Case_OneofWktI32{
+// 		OneofWktI32: nil,
+// 	}
+// 	jsn, err = mOpt.Marshal(m)
+// 	assert.Nil(t, err)
+// 	log.Println(string(jsn) + "\n")
 
-	m.OneOf = &testv1.Case_OneofB{
-		OneofB: nil,
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
+// 	m.OneOf = &testv1.Case_OneofB{
+// 		OneofB: nil,
+// 	}
+// 	jsn, err = mOpt.Marshal(m)
+// 	assert.Nil(t, err)
+// 	log.Println(string(jsn) + "\n")
 
-	m.OneOf = &testv1.Case_OneofWktB{
-		OneofWktB: nil,
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
+// 	m.OneOf = &testv1.Case_OneofWktB{
+// 		OneofWktB: nil,
+// 	}
+// 	jsn, err = mOpt.Marshal(m)
+// 	assert.Nil(t, err)
+// 	log.Println(string(jsn) + "\n")
 
-	m.OneOf = &testv1.Case_OneofWktB{
-		OneofWktB: wrapperspb.Bytes(nil),
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
+// 	m.OneOf = &testv1.Case_OneofWktB{
+// 		OneofWktB: wrapperspb.Bytes(nil),
+// 	}
+// 	jsn, err = mOpt.Marshal(m)
+// 	assert.Nil(t, err)
+// 	log.Println(string(jsn) + "\n")
 
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	cfg.RegisterExtension(&extra.EmitEmptyExtension{Filter: protoext.ProtoEmitUnpopulated})
-	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
-}
+// 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+// 	cfg.RegisterExtension(&protoext.ProtoExtension{})
+// 	cfg.RegisterExtension(&extra.EmitEmptyExtension{Filter: protoext.ProtoEmitUnpopulated})
+// 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+// }

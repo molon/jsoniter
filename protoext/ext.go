@@ -2,7 +2,6 @@ package protoext
 
 import (
 	"reflect"
-	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
@@ -16,53 +15,6 @@ type ProtoExtension struct {
 	UseEnumNumbers       bool
 	UseProtoNames        bool
 	Encode64BitAsInteger bool
-}
-
-func (e *ProtoExtension) UpdateStructDescriptor(desc *jsoniter.StructDescriptor) {
-	for _, binding := range desc.Fields {
-		if len(binding.FromNames) <= 0 { // simple check should exported
-			continue
-		}
-
-		tag, hastag := binding.Field.Tag().Lookup("protobuf")
-		if !hastag {
-			continue
-		}
-
-		var name, jsonName string
-		tagParts := strings.Split(tag, ",")
-		for _, part := range tagParts {
-			colons := strings.SplitN(part, "=", 2)
-			if len(colons) == 2 {
-				switch strings.TrimSpace(colons[0]) {
-				case "name":
-					name = strings.TrimSpace(colons[1])
-				case "json":
-					jsonName = strings.TrimSpace(colons[1])
-				}
-			}
-		}
-		if jsonName == "" {
-			jsonName = name
-		}
-		if name != "" {
-			if e.UseProtoNames {
-				binding.FromNames = []string{name}
-				// fuzzy
-				if jsonName != name {
-					binding.FromNames = append(binding.FromNames, jsonName)
-				}
-				binding.ToNames = []string{name}
-			} else {
-				binding.FromNames = []string{jsonName}
-				// fuzzy
-				if name != jsonName {
-					binding.FromNames = append(binding.FromNames, name)
-				}
-				binding.ToNames = []string{jsonName}
-			}
-		}
-	}
 }
 
 func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
