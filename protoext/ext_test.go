@@ -3,6 +3,7 @@ package protoext_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -138,6 +139,9 @@ func TestEmitUnpopulated(t *testing.T) {
 			I32:  wrapperspb.Int32(-2),
 			Nu:   structpb.NullValue_NULL_VALUE,
 			Em:   &emptypb.Empty{},
+			Fm: &fieldmaskpb.FieldMask{
+				Paths: []string{"f.display_name", "f.b.c"},
+			},
 		},
 	}
 
@@ -177,20 +181,24 @@ func TestWkt(t *testing.T) {
 		Ui32: *wrapperspb.UInt32(0),
 		I32:  *wrapperspb.Int32(-2),
 		Em:   &emptypb.Empty{},
+		Fm: &fieldmaskpb.FieldMask{
+			Paths: []string{"f.display_name", "f.b.c"},
+		},
 	}
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	jsn, err := cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"d":"36s","t":"2022-06-09T21:03:49.560Z","i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"em":{}}`, jsn)
+	assert.Equal(t, `{"d":"36s","t":"2022-06-09T21:03:49.560Z","i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"fm":"f.displayName,f.b.c","em":{}}`, jsn)
 
 	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	// because m is not proto.Message, if we want all emit empty, should register another extension
 	cfg.RegisterExtension(&extra.EmitEmptyExtension{})
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"a":null,"d":"36s","t":"2022-06-09T21:03:49.560Z","st":null,"i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"b":null,"s":null,"by":null,"fm":null,"em":{},"nu":null}`, jsn)
+	assert.Equal(t, `{"a":null,"d":"36s","t":"2022-06-09T21:03:49.560Z","st":null,"i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"b":null,"s":null,"by":null,"fm":"f.displayName,f.b.c","em":{},"nu":null}`, jsn)
 
 	m2 := &M{}
 	err = cfg.UnmarshalFromString(jsn, m2)
@@ -443,8 +451,7 @@ func TestOneof(t *testing.T) {
 	assert.True(t, proto.Equal(m, m2))
 
 	// 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-	// 	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	// 	// cfg.RegisterExtension(&protoext.EmitEmptyWithTypeExtension{})
+	// 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUn})
 
 	// 	fakeOneOfStr := "fakeOneOf"
 
@@ -590,4 +597,57 @@ func TestPointerArray(t *testing.T) {
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+}
+
+func TestCaseNull(t *testing.T) {
+	m := &testv1.CaseNull{
+		B1:   nil, // marshaled to "" instead with null
+		B2:   []byte(`abc`),
+		RptB: [][]byte{[]byte(`ABC`), nil, []byte(``), []byte(`EFG`)},
+		MapB: map[string][]byte{"keyA": nil, "keyB": []byte(`HIJ`)},
+		RptWktI32: []*wrapperspb.Int32Value{
+			wrapperspb.Int32(-1),
+			wrapperspb.Int32(0),
+			nil, // marshaled to 0 instead with null
+			wrapperspb.Int32(1),
+		},
+		MapWktI32: map[string]*wrapperspb.Int32Value{
+			"a": nil, // marshaled to 0 instead with null
+			"b": wrapperspb.Int32(0),
+		},
+		RptMsg: []*testv1.Message{
+			&testv1.Message{Id: "id1"},
+			nil, // marshaled to {"id":""} instead with null
+			&testv1.Message{Id: "id3"},
+		},
+		MapMsg: map[string]*testv1.Message{
+			"msgA": &testv1.Message{Id: "ida"},
+			"msgB": nil, // marshaled to {"id":""} instead with null
+			"msgC": &testv1.Message{Id: "idc"},
+		},
+	}
+
+	jsn, _ := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(m)
+	log.Println(string(jsn))
+
+	jsn, _ = json.Marshal(struct {
+		B    [][]byte
+		Msgs []*testv1.Message
+	}{
+		B: [][]byte{
+			[]byte(nil),
+		},
+		Msgs: []*testv1.Message{
+			nil,
+		},
+	})
+	fmt.Println(string(jsn))
+	// Output:
+	// {"B":[null],"Msgs":[null]}
+
+	m.Reset()
+	err := protojson.Unmarshal([]byte(`{"rptB":["QUJD",null,"","RUZH"]}`), m)
+	fmt.Println(err)
+	// Output:
+	// proto: (line 1:17): invalid value for bytes type: null
 }

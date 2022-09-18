@@ -115,7 +115,7 @@ var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():       nil,
 	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem():    nil,
 	reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():        nil,
-	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): nil,
+	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): fieldmaskCodec,
 	reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem(): NewElemTypeCodec(
 		func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 			stream.WriteObjectStart()

@@ -16,6 +16,7 @@ type protojsonEncoder struct {
 }
 
 func (enc *protojsonEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	// TODO: 这个opts有没有必要传递？
 	data, err := protojson.Marshal(enc.valueType.PackEFace(ptr).(proto.Message))
 	if err != nil {
 		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", reflect2.PtrTo(enc.valueType), err)
