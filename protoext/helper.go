@@ -71,3 +71,23 @@ func (encoder *dynamicEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Strea
 func (encoder *dynamicEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return encoder.valType.UnsafeIndirect(ptr) == nil
 }
+
+type Codec struct {
+	Encoder jsoniter.ValEncoder
+	Decoder jsoniter.ValDecoder
+}
+
+func NewElemTypeCodec(encodeFunc jsoniter.EncoderFunc, decodeFunc jsoniter.DecoderFunc) *Codec {
+	c := &Codec{}
+	if encodeFunc != nil {
+		c.Encoder = &funcEncoder{
+			fun: encodeFunc,
+		}
+	}
+	if decodeFunc != nil {
+		c.Decoder = &funcDecoder{
+			fun: decodeFunc,
+		}
+	}
+	return c
+}

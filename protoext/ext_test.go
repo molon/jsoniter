@@ -620,13 +620,15 @@ func TestCaseNull(t *testing.T) {
 	m := &testv1.CaseValue{
 		V: structpb.NewBoolValue(false),
 	}
-	a, _ := anypb.New(wrapperspb.String("wrapStr"))
+	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
+	a, _ := anypb.New(&testv1.Message{Id: "idA"})
 	m.A = a
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 
-	jsn, _ := cfg.MarshalToString(m)
+	jsn, err := cfg.MarshalToString(m)
+	assert.Nil(t, err)
 	log.Println(string(jsn))
 
 	// TODO: null 和 value 以及 null_value 的前后转换，参考protojson特性

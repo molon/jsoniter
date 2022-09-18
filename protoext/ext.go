@@ -22,7 +22,7 @@ type ProtoExtension struct {
 }
 
 func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
-	if codec, ok := WellKnownTypeCodecs[typ]; ok {
+	if codec, ok := ProtoMessageCodecs[typ]; ok {
 		if codec != nil && codec.Encoder != nil {
 			return codec.Encoder
 		}
@@ -50,7 +50,7 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 }
 
 func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
-	if codec, ok := WellKnownTypeCodecs[typ]; ok {
+	if codec, ok := ProtoMessageCodecs[typ]; ok {
 		if codec != nil && codec.Decoder != nil {
 			return codec.Decoder
 		}

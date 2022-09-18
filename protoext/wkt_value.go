@@ -22,6 +22,11 @@ var wktValueCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		x := ((*structpb.Value)(ptr))
 		switch v := x.GetKind().(type) {
+		case *structpb.Value_NullValue:
+			if v != nil {
+				stream.WriteNil()
+				return
+			}
 		case *structpb.Value_NumberValue:
 			if v != nil {
 				if math.IsNaN(v.NumberValue) || math.IsInf(v.NumberValue, 0) {

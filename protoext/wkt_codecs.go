@@ -12,13 +12,38 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // https://github.com/protocolbuffers/protobuf-go/blob/master/encoding/protojson/well_known_types.go
-var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
-	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): nil,
+var WellKnownTypes = map[reflect2.Type]bool{
+	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem():              true,
+	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*durationpb.Duration)(nil)).Elem():    true,
+	reflect2.TypeOfPtr((*wrapperspb.BoolValue)(nil)).Elem():   true,
+	reflect2.TypeOfPtr((*wrapperspb.Int32Value)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*wrapperspb.Int64Value)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*wrapperspb.UInt32Value)(nil)).Elem(): true,
+	reflect2.TypeOfPtr((*wrapperspb.UInt64Value)(nil)).Elem(): true,
+	reflect2.TypeOfPtr((*wrapperspb.FloatValue)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*wrapperspb.DoubleValue)(nil)).Elem(): true,
+	reflect2.TypeOfPtr((*wrapperspb.StringValue)(nil)).Elem(): true,
+	reflect2.TypeOfPtr((*wrapperspb.BytesValue)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():        true,
+	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem():     true,
+	reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():         true,
+	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem():  true,
+	reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem():          true,
+}
+
+func IsWellKnownType(typ reflect2.Type) bool {
+	return WellKnownTypes[typ]
+}
+
+var ProtoMessageCodecs = map[reflect2.Type]*Codec{
+	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): wktAnyCodec,
 
 	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)).Elem(): wktTimestampCodec,
 	reflect2.TypeOfPtr((*durationpb.Duration)(nil)).Elem():   wktDurationCodec,
@@ -114,9 +139,9 @@ var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 	),
 
 	// TODO: 这三个本身就实现了 json.Marshaler 所以这里设置了也没意义，暂时很无奈
-	// reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():       nil,
-	// reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem():    nil,
-	// reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():        wktValueCodec,
+	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():    nil,
+	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem(): nil,
+	reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():     wktValueCodec,
 
 	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): wktFieldmaskCodec,
 	reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem(): NewElemTypeCodec(
@@ -128,20 +153,4 @@ var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 			iter.Skip()
 		},
 	),
-}
-
-type Codec struct {
-	Encoder jsoniter.ValEncoder
-	Decoder jsoniter.ValDecoder
-}
-
-func NewElemTypeCodec(encodeFunc jsoniter.EncoderFunc, decodeFunc jsoniter.DecoderFunc) *Codec {
-	c := &Codec{}
-	c.Encoder = &funcEncoder{
-		fun: encodeFunc,
-	}
-	c.Decoder = &funcDecoder{
-		fun: decodeFunc,
-	}
-	return c
 }

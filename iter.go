@@ -122,6 +122,11 @@ func ParseString(cfg API, input string) *Iterator {
 	return ParseBytes(cfg, []byte(input))
 }
 
+// API returns API
+func (iter *Iterator) API() API {
+	return iter.cfg
+}
+
 // Pool returns a pool can provide more iterator with same configuration
 func (iter *Iterator) Pool() IteratorPool {
 	return iter.cfg
