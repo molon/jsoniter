@@ -7,12 +7,13 @@ func FuzzFuncs() []any {
 }
 
 var ff = [...]any{
+	FuzzMessage,
+	FuzzCaseValue,
 	FuzzCase,
 	FuzzAll,
 	FuzzRepeated,
 	FuzzOptionals,
 	FuzzWKTOptionals,
-	FuzzMessage,
 	FuzzWKTs,
 	FuzzRepeatedWKTs,
 	FuzzOneOf,

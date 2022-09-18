@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -21,8 +20,8 @@ import (
 var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): nil,
 
-	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)).Elem(): timestampCodec,
-	reflect2.TypeOfPtr((*durationpb.Duration)(nil)).Elem():   durationCodec,
+	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)).Elem(): wktTimestampCodec,
+	reflect2.TypeOfPtr((*durationpb.Duration)(nil)).Elem():   wktDurationCodec,
 
 	reflect2.TypeOfPtr((*wrapperspb.BoolValue)(nil)).Elem(): NewElemTypeCodec(
 		func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
@@ -40,6 +39,7 @@ var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 			(*wrapperspb.Int32Value)(ptr).Value = iter.ReadInt32()
 		},
 	),
+	// "NaN" "Infinity" "-Infinity" handle??? // TODO:
 	reflect2.TypeOfPtr((*wrapperspb.Int64Value)(nil)).Elem(): NewElemTypeCodec(
 		func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 			stream.WriteInt64(((*wrapperspb.Int64Value)(ptr)).GetValue())
@@ -112,10 +112,13 @@ var WellKnownTypeCodecs = map[reflect2.Type]*Codec{
 			(*wrapperspb.BytesValue)(ptr).Value = b
 		},
 	),
-	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():       nil,
-	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem():    nil,
-	reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():        nil,
-	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): fieldmaskCodec,
+
+	// TODO: 这三个本身就实现了 json.Marshaler 所以这里设置了也没意义，暂时很无奈
+	// reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():       nil,
+	// reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem():    nil,
+	// reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():        wktValueCodec,
+
+	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): wktFieldmaskCodec,
 	reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem(): NewElemTypeCodec(
 		func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 			stream.WriteObjectStart()

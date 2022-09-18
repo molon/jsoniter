@@ -3,7 +3,6 @@ package protoext_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -67,6 +66,7 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 	jsnB, err = pMarshalToStringWithOpts(*opts, m)
 	assert.Nil(t, err)
 	assert.Equal(t, jsnA, jsnB)
+	log.Println(jsnA)
 
 	m2 := proto.Clone(m)
 	err = cfg.UnmarshalFromString(jsnA, m2)
@@ -128,7 +128,20 @@ func TestJsonName(t *testing.T) {
 }
 
 func TestEmitUnpopulated(t *testing.T) {
-	// TODO: 如果是 any ，那 protojson 的 opts 如何传递进去呢？
+	lv, _ := structpb.NewList([]interface{}{
+		nil,
+		true,
+		-1,
+		1.5,
+		"str",
+		[]byte(nil),
+		map[string]interface{}{
+			"b": false,
+		},
+		[]interface{}{
+			1, 2, 3,
+		},
+	})
 	m := &testv1.All{
 		Wkt: &testv1.WKTs{
 			T:    timestamppb.New(timeCase),
@@ -138,10 +151,14 @@ func TestEmitUnpopulated(t *testing.T) {
 			Ui32: wrapperspb.UInt32(0),
 			I32:  wrapperspb.Int32(-2),
 			Nu:   structpb.NullValue_NULL_VALUE,
-			Em:   &emptypb.Empty{},
+
+			Em: &emptypb.Empty{},
 			Fm: &fieldmaskpb.FieldMask{
 				Paths: []string{"f.display_name", "f.b.c"},
 			},
+
+			V:  structpb.NewBoolValue(true), // structpb.NewListValue(lv),
+			Lv: lv,
 		},
 	}
 
@@ -149,9 +166,9 @@ func TestEmitUnpopulated(t *testing.T) {
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	commonCheck(t, cfg, &protojson.MarshalOptions{}, m)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
-	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+	// cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	// cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
+	// commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
 
 func TestWkt(t *testing.T) {
@@ -600,54 +617,17 @@ func TestPointerArray(t *testing.T) {
 }
 
 func TestCaseNull(t *testing.T) {
-	m := &testv1.CaseNull{
-		B1:   nil, // marshaled to "" instead with null
-		B2:   []byte(`abc`),
-		RptB: [][]byte{[]byte(`ABC`), nil, []byte(``), []byte(`EFG`)},
-		MapB: map[string][]byte{"keyA": nil, "keyB": []byte(`HIJ`)},
-		RptWktI32: []*wrapperspb.Int32Value{
-			wrapperspb.Int32(-1),
-			wrapperspb.Int32(0),
-			nil, // marshaled to 0 instead with null
-			wrapperspb.Int32(1),
-		},
-		MapWktI32: map[string]*wrapperspb.Int32Value{
-			"a": nil, // marshaled to 0 instead with null
-			"b": wrapperspb.Int32(0),
-		},
-		RptMsg: []*testv1.Message{
-			&testv1.Message{Id: "id1"},
-			nil, // marshaled to {"id":""} instead with null
-			&testv1.Message{Id: "id3"},
-		},
-		MapMsg: map[string]*testv1.Message{
-			"msgA": &testv1.Message{Id: "ida"},
-			"msgB": nil, // marshaled to {"id":""} instead with null
-			"msgC": &testv1.Message{Id: "idc"},
-		},
+	m := &testv1.CaseValue{
+		V: structpb.NewBoolValue(false),
 	}
+	a, _ := anypb.New(wrapperspb.String("wrapStr"))
+	m.A = a
 
-	jsn, _ := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(m)
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
+
+	jsn, _ := cfg.MarshalToString(m)
 	log.Println(string(jsn))
 
-	jsn, _ = json.Marshal(struct {
-		B    [][]byte
-		Msgs []*testv1.Message
-	}{
-		B: [][]byte{
-			[]byte(nil),
-		},
-		Msgs: []*testv1.Message{
-			nil,
-		},
-	})
-	fmt.Println(string(jsn))
-	// Output:
-	// {"B":[null],"Msgs":[null]}
-
-	m.Reset()
-	err := protojson.Unmarshal([]byte(`{"rptB":["QUJD",null,"","RUZH"]}`), m)
-	fmt.Println(err)
-	// Output:
-	// proto: (line 1:17): invalid value for bytes type: null
+	// TODO: null 和 value 以及 null_value 的前后转换，参考protojson特性
 }

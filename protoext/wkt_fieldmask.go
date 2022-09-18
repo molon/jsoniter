@@ -14,7 +14,7 @@ const (
 	FieldMask_Paths_field_fullname protoreflect.FullName = "google.protobuf.FieldMask.paths"
 )
 
-var fieldmaskCodec = NewElemTypeCodec(
+var wktFieldmaskCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		v := ((*fieldmaskpb.FieldMask)(ptr))
 		paths := make([]string, 0, len(v.GetPaths()))

@@ -7,16 +7,17 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// TODO: genid.Value_message_fullname 相关可能也需要特殊处理
 type ProtoExtension struct {
 	jsoniter.DummyExtension
 
-	EmitUnpopulated      bool
-	UseEnumNumbers       bool
-	UseProtoNames        bool
+	EmitUnpopulated bool
+	UseEnumNumbers  bool
+	UseProtoNames   bool
+
 	Encode64BitAsInteger bool
 }
 
@@ -28,6 +29,11 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 		// If not specified, use protojson for processing
 		return &protojsonEncoder{
 			valueType: typ,
+			marshalOpts: protojson.MarshalOptions{
+				EmitUnpopulated: e.EmitUnpopulated,
+				UseEnumNumbers:  e.UseEnumNumbers,
+				UseProtoNames:   e.UseProtoNames,
+			},
 		}
 	}
 
@@ -88,6 +94,7 @@ func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEnco
 
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	// TODO: 确定这点也要和protojson保持一致？感觉是它的bug
+	// https://github.com/golang/protobuf/issues/1487
 	// // marshal nil []byte to ""
 	// if typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 	// 	return &funcEncoder{

@@ -10,6 +10,18 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+
+message Message {
+  string id = 1;
+}
+
+message CaseValue {
+  google.protobuf.Value v = 1;
+  google.protobuf.Struct s = 2;
+  google.protobuf.ListValue l = 3;
+  google.protobuf.Any a = 4;
+}
+
 message Case {
   google.protobuf.Int32Value wkt_i32_a = 1;
   google.protobuf.Int32Value wkt_i32_b = 2;
@@ -125,10 +137,6 @@ enum JsonEnum {
   JSON_ENUM_SOME = 1;
 }
 
-message Message {
-  string id = 1;
-}
-
 message WKTs {
   google.protobuf.Any a = 1;
   google.protobuf.Duration d = 2;
@@ -146,6 +154,8 @@ message WKTs {
   google.protobuf.FieldMask fm = 14;
   google.protobuf.Empty em = 15;
   google.protobuf.NullValue nu = 16;
+  google.protobuf.Value v = 17;
+  google.protobuf.ListValue lv = 18;
 }
 
 message RepeatedWKTs {

@@ -9,6 +9,21 @@ import (
 	v1 "github.com/json-iterator/go/protoext/internal/gen/go/test/v1"
 )
 
+// FuzzMessage is a fuzz function.
+// If can be registered using `Fuzzer.Funcs` function.
+func FuzzMessage(x *v1.Message, f gofuzz.Continue) {
+	f.Fuzz(&x.Id)
+}
+
+// FuzzCaseValue is a fuzz function.
+// If can be registered using `Fuzzer.Funcs` function.
+func FuzzCaseValue(x *v1.CaseValue, f gofuzz.Continue) {
+	f.Fuzz(&x.V)
+	f.Fuzz(&x.S)
+	f.Fuzz(&x.L)
+	f.Fuzz(&x.A)
+}
+
 // FuzzCase is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzCase(x *v1.Case, f gofuzz.Continue) {
@@ -134,12 +149,6 @@ func FuzzWKTOptionals(x *v1.WKTOptionals, f gofuzz.Continue) {
 	f.Fuzz(&x.Nu)
 }
 
-// FuzzMessage is a fuzz function.
-// If can be registered using `Fuzzer.Funcs` function.
-func FuzzMessage(x *v1.Message, f gofuzz.Continue) {
-	f.Fuzz(&x.Id)
-}
-
 // FuzzWKTs is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzWKTs(x *v1.WKTs, f gofuzz.Continue) {
@@ -159,6 +168,8 @@ func FuzzWKTs(x *v1.WKTs, f gofuzz.Continue) {
 	f.Fuzz(&x.Fm)
 	f.Fuzz(&x.Em)
 	f.Fuzz(&x.Nu)
+	f.Fuzz(&x.V)
+	f.Fuzz(&x.Lv)
 }
 
 // FuzzRepeatedWKTs is a fuzz function.

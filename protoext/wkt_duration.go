@@ -18,7 +18,7 @@ const (
 	Duration_message_fullname protoreflect.FullName = "google.protobuf.Duration"
 )
 
-var durationCodec = NewElemTypeCodec(
+var wktDurationCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		s, err := marshalDuration(((*durationpb.Duration)(ptr)))
 		if err != nil {

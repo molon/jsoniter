@@ -17,7 +17,7 @@ const (
 	Timestamp_message_fullname protoreflect.FullName = "google.protobuf.Timestamp"
 )
 
-var timestampCodec = NewElemTypeCodec(
+var wktTimestampCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		s, err := marshalTimestamp(((*timestamppb.Timestamp)(ptr)))
 		if err != nil {
