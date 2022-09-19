@@ -8,6 +8,7 @@ import (
 	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -17,6 +18,10 @@ type ProtoExtension struct {
 	EmitUnpopulated bool
 	UseEnumNumbers  bool
 	UseProtoNames   bool
+	Resolver        interface {
+		protoregistry.MessageTypeResolver
+		protoregistry.ExtensionTypeResolver
+	}
 
 	Encode64BitAsInteger bool
 }
@@ -33,6 +38,7 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 				EmitUnpopulated: e.EmitUnpopulated,
 				UseEnumNumbers:  e.UseEnumNumbers,
 				UseProtoNames:   e.UseProtoNames,
+				Resolver:        e.Resolver,
 			},
 		}
 	}
@@ -93,23 +99,9 @@ func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEnco
 }
 
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
-	// TODO: 确定这点也要和protojson保持一致？感觉是它的bug
-	// https://github.com/golang/protobuf/issues/1487
-	// // marshal nil []byte to ""
-	// if typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
-	// 	return &funcEncoder{
-	// 		fun: func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	// 			if *((*unsafe.Pointer)(ptr)) == nil {
-	// 				stream.Write([]byte{'"', '"'})
-	// 				return
-	// 			}
-	// 			encoder.Encode(ptr, stream)
-	// 		},
-	// 		isEmptyFunc: func(ptr unsafe.Pointer) bool {
-	// 			return encoder.IsEmpty(ptr)
-	// 		},
-	// 	}
-	// }
+	if enc := decorateEncoderOfNilCollection(typ, encoder); enc != nil {
+		return enc
+	}
 
 	if e.Encode64BitAsInteger {
 		return encoder

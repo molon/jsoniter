@@ -43,7 +43,7 @@ func IsWellKnownType(typ reflect2.Type) bool {
 }
 
 var ProtoMessageCodecs = map[reflect2.Type]*Codec{
-	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): wktAnyCodec,
+	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): nil, // wktAnyCodec,
 
 	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)).Elem(): wktTimestampCodec,
 	reflect2.TypeOfPtr((*durationpb.Duration)(nil)).Elem():   wktDurationCodec,

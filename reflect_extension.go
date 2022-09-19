@@ -58,6 +58,9 @@ type Extension interface {
 
 type ComplexExtension interface {
 	UpdateStructDescriptorConstructor(v *StructDescriptorConstructor)
+	UpdateMapEncoderConstructor(v *MapEncoderConstructor)
+	UpdateSliceEncoderConstructor(v *SliceEncoderConstructor)
+	UpdateArrayEncoderConstructor(v *ArrayEncoderConstructor)
 }
 
 // DummyExtension embed this type get dummy implementation for all methods of Extension

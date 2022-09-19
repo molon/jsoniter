@@ -66,7 +66,6 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 	jsnB, err = pMarshalToStringWithOpts(*opts, m)
 	assert.Nil(t, err)
 	assert.Equal(t, jsnA, jsnB)
-	log.Println(jsnA)
 
 	m2 := proto.Clone(m)
 	err = cfg.UnmarshalFromString(jsnA, m2)
@@ -577,39 +576,6 @@ func TestPointerArray(t *testing.T) {
 			"msgC": &testv1.Message{Id: "idc"},
 		},
 	}
-
-	mOpt := protojson.MarshalOptions{EmitUnpopulated: true}
-	jsn, err := mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
-
-	m.OneOf = &testv1.Case_OneofWktI32{
-		OneofWktI32: nil,
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
-
-	m.OneOf = &testv1.Case_OneofB{
-		OneofB: nil,
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
-
-	m.OneOf = &testv1.Case_OneofWktB{
-		OneofWktB: nil,
-	}
-	jsn, err = mOpt.Marshal(m)
-	assert.Nil(t, err)
-	log.Println(string(jsn) + "\n")
-
-	// m.OneOf = &testv1.Case_OneofWktB{
-	// 	OneofWktB: wrapperspb.Bytes(nil),
-	// }
-	// jsn, err = mOpt.Marshal(m)
-	// assert.Nil(t, err)
-	// log.Println(string(jsn) + "\n")
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
