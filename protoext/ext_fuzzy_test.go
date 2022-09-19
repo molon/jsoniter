@@ -13,6 +13,7 @@ import (
 	"github.com/srikrsna/goprotofuzz"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -20,8 +21,16 @@ func fuzzNullValue(x *structpb.NullValue, f gofuzz.Continue) {
 	*x = structpb.NullValue_NULL_VALUE
 }
 
+func fuzzFieldMask(x *fieldmaskpb.FieldMask, c gofuzz.Continue) {
+	fc := c.Rand.Intn(21) + 1
+	x.Paths = make([]string, fc)
+	for i := 0; i < fc; i++ {
+		x.Paths[i] = "a" //protoext.JSONSnakeCase(c.RandString())
+	}
+}
+
 func appendFuzzFuncs(f *gofuzz.Fuzzer) *gofuzz.Fuzzer {
-	return f.Funcs(testv1fuzz.FuzzFuncs()...).Funcs(goprotofuzz.FuzzWKT[:]...).Funcs(fuzzNullValue)
+	return f.Funcs(testv1fuzz.FuzzFuncs()...).Funcs(goprotofuzz.FuzzWKT[:]...).Funcs(fuzzNullValue, fuzzFieldMask)
 }
 
 func FuzzReadWrite(f *testing.F) {

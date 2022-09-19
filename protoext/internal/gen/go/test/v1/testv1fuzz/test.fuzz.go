@@ -18,10 +18,7 @@ func FuzzMessage(x *v1.Message, f gofuzz.Continue) {
 // FuzzCaseValue is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzCaseValue(x *v1.CaseValue, f gofuzz.Continue) {
-	f.Fuzz(&x.V)
-	f.Fuzz(&x.S)
-	f.Fuzz(&x.L)
-	f.Fuzz(&x.A)
+	f.Fuzz(&x.Strs)
 }
 
 // FuzzCase is a fuzz function.
@@ -49,6 +46,8 @@ func FuzzCase(x *v1.Case, f gofuzz.Continue) {
 	f.Fuzz(&x.MapWktB)
 	f.Fuzz(&x.RptMsg)
 	f.Fuzz(&x.MapMsg)
+	f.Fuzz(&x.MapEnum)
+	f.Fuzz(&x.MapWktU64)
 	switch f.Int31n(4) {
 	case 0:
 		var o v1.Case_OneofWktI32
@@ -168,8 +167,6 @@ func FuzzWKTs(x *v1.WKTs, f gofuzz.Continue) {
 	f.Fuzz(&x.Fm)
 	f.Fuzz(&x.Em)
 	f.Fuzz(&x.Nu)
-	f.Fuzz(&x.V)
-	f.Fuzz(&x.Lv)
 }
 
 // FuzzRepeatedWKTs is a fuzz function.

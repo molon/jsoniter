@@ -16,10 +16,11 @@ message Message {
 }
 
 message CaseValue {
-  google.protobuf.Value v = 1;
-  google.protobuf.Struct s = 2;
-  google.protobuf.ListValue l = 3;
-  google.protobuf.Any a = 4;
+  // google.protobuf.Value v = 1;
+  // google.protobuf.Struct s = 2;
+  // google.protobuf.ListValue l = 3;
+  // google.protobuf.Any a = 4;
+  repeated string strs = 1;
 }
 
 message Case {
@@ -54,6 +55,8 @@ message Case {
 
   repeated Message rpt_msg = 41;
   map<string,Message> map_msg = 42;
+  map<string, JsonEnum> map_enum = 43;
+  map<uint64, google.protobuf.UInt64Value> map_wkt_u64 = 44;
 }
 
 message All {
@@ -154,8 +157,9 @@ message WKTs {
   google.protobuf.FieldMask fm = 14;
   google.protobuf.Empty em = 15;
   google.protobuf.NullValue nu = 16;
-  google.protobuf.Value v = 17;
-  google.protobuf.ListValue lv = 18;
+  // TODO: cant gofuzz now
+  // google.protobuf.Value v = 17;
+  // google.protobuf.ListValue lv = 18;
 }
 
 message RepeatedWKTs {

@@ -127,20 +127,20 @@ func TestJsonName(t *testing.T) {
 }
 
 func TestEmitUnpopulated(t *testing.T) {
-	lv, _ := structpb.NewList([]interface{}{
-		nil,
-		true,
-		-1,
-		1.5,
-		"str",
-		[]byte(nil),
-		map[string]interface{}{
-			"b": false,
-		},
-		[]interface{}{
-			1, 2, 3,
-		},
-	})
+	// lv, _ := structpb.NewList([]interface{}{
+	// 	nil,
+	// 	true,
+	// 	-1,
+	// 	1.5,
+	// 	"str",
+	// 	[]byte(nil),
+	// 	map[string]interface{}{
+	// 		"b": false,
+	// 	},
+	// 	[]interface{}{
+	// 		1, 2, 3,
+	// 	},
+	// })
 	m := &testv1.All{
 		Wkt: &testv1.WKTs{
 			T:    timestamppb.New(timeCase),
@@ -156,8 +156,7 @@ func TestEmitUnpopulated(t *testing.T) {
 				Paths: []string{"f.display_name", "f.b.c"},
 			},
 
-			V:  structpb.NewBoolValue(true), // structpb.NewListValue(lv),
-			Lv: lv,
+			// Lv: lv,
 		},
 	}
 
@@ -522,7 +521,7 @@ func TestOneof(t *testing.T) {
 	// // assert.Equal(t, `{"OneOf":"fakeOneOf","i32":3}`, jsn)
 }
 
-func TestPointerArray(t *testing.T) {
+func TestNilValues(t *testing.T) {
 	i32 := int32(-123)
 	m := &testv1.Case{
 		WktI32A:    nil,
@@ -575,6 +574,17 @@ func TestPointerArray(t *testing.T) {
 			"msgB": nil,
 			"msgC": &testv1.Message{Id: "idc"},
 		},
+		MapEnum: map[string]testv1.JsonEnum{
+			"enumA": testv1.JsonEnum_JSON_ENUM_SOME,
+			"enumB": testv1.JsonEnum_JSON_ENUM_UNSPECIFIED,
+		},
+		MapWktU64: map[uint64]*wrapperspb.UInt64Value{
+			// TODO: 这里 protojson sort map key 不是依循着字符串排序的
+			1: wrapperspb.UInt64(123),
+			2: wrapperspb.UInt64(223),
+			3: nil,
+			// 18081233737888512426: wrapperspb.UInt64(0),
+		},
 	}
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
@@ -583,12 +593,34 @@ func TestPointerArray(t *testing.T) {
 }
 
 func TestCaseNull(t *testing.T) {
-	m := &testv1.CaseValue{
-		V: structpb.NewBoolValue(false),
+	a := "a"
+	strs := []string{a, "b"}
+	strsB := []*string{&a, nil}
+
+	strsC := []**string{&strsB[0], nil}
+	log.Printf("a => %p strs => %p strs[0] => %p strsB[0] => %p", &a, strs, &strs[0], &strsB[0])
+
+	m := struct {
+		Strs  []string
+		StrsB []*string
+		StrsC []**string
+		Strss [][]string
+		Bytes [][]byte
+	}{
+		Strs:  strs,
+		StrsB: strsB,
+		StrsC: strsC,
+		Strss: [][]string{[]string{"a"}, nil, []string{"c"}},
+		Bytes: [][]byte{[]byte(`a`), nil, []byte(`c`)},
 	}
-	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
-	a, _ := anypb.New(&testv1.Message{Id: "idA"})
-	m.A = a
+
+	// m := &testv1.CaseValue{
+	// 	// V: structpb.NewBoolValue(false),
+	// 	Strs: strs,
+	// }
+	// // a, _ := anypb.New(wrapperspb.String("wrapStr"))
+	// a, _ := anypb.New(&testv1.Message{Id: "idA"})
+	// m.A = a
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
