@@ -42,8 +42,11 @@ func IsWellKnownType(typ reflect2.Type) bool {
 	return WellKnownTypes[typ]
 }
 
-var ProtoMessageCodecs = map[reflect2.Type]*Codec{
-	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): nil, // wktAnyCodec,
+type CodecCreator = func(e *ProtoExtension) *Codec
+
+// value is *Codec or CodecCreator
+var ProtoMessageCodecs = map[reflect2.Type]any{
+	reflect2.TypeOfPtr((*anypb.Any)(nil)).Elem(): wktAnyCodecCreator,
 
 	reflect2.TypeOfPtr((*timestamppb.Timestamp)(nil)).Elem(): wktTimestampCodec,
 	reflect2.TypeOfPtr((*durationpb.Duration)(nil)).Elem():   wktDurationCodec,
@@ -138,10 +141,11 @@ var ProtoMessageCodecs = map[reflect2.Type]*Codec{
 		},
 	),
 
-	// TODO: 这三个本身就实现了 json.Marshaler 所以这里设置了也没意义，暂时很无奈
+	// Because the following three implement json.Marshaler/Unmarshaler, we must also set the codec of its pointer type to override
 	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():    nil,
 	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem(): nil,
 	reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():     wktValueCodec,
+	reflect2.TypeOfPtr((*structpb.Value)(nil)):            wktValueCodec,
 
 	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): wktFieldmaskCodec,
 	reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem(): NewElemTypeCodec(

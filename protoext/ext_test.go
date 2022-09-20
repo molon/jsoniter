@@ -593,41 +593,58 @@ func TestNilValues(t *testing.T) {
 }
 
 func TestCaseNull(t *testing.T) {
-	a := "a"
-	strs := []string{a, "b"}
-	strsB := []*string{&a, nil}
+	// a := "a"
+	// strs := []string{a, "b"}
+	// strsB := []*string{&a, nil}
 
-	strsC := []**string{&strsB[0], nil}
-	log.Printf("a => %p strs => %p strs[0] => %p strsB[0] => %p", &a, strs, &strs[0], &strsB[0])
+	// strsC := []**string{&strsB[0], nil}
+	// log.Printf("a => %p strs => %p strs[0] => %p strsB[0] => %p", &a, strs, &strs[0], &strsB[0])
 
-	m := struct {
-		Strs  []string
-		StrsB []*string
-		StrsC []**string
-		Strss [][]string
-		Bytes [][]byte
-	}{
-		Strs:  strs,
-		StrsB: strsB,
-		StrsC: strsC,
-		Strss: [][]string{[]string{"a"}, nil, []string{"c"}},
-		Bytes: [][]byte{[]byte(`a`), nil, []byte(`c`)},
-	}
-
-	// m := &testv1.CaseValue{
-	// 	// V: structpb.NewBoolValue(false),
-	// 	Strs: strs,
+	// m := struct {
+	// 	Strs  []string
+	// 	StrsB []*string
+	// 	StrsC []**string
+	// 	Strss [][]string
+	// 	Bytes [][]byte
+	// }{
+	// 	Strs:  strs,
+	// 	StrsB: strsB,
+	// 	StrsC: strsC,
+	// 	Strss: [][]string{[]string{"a"}, nil, []string{"c"}},
+	// 	Bytes: [][]byte{[]byte(`a`), nil, []byte(`c`)},
 	// }
-	// // a, _ := anypb.New(wrapperspb.String("wrapStr"))
+
+	m := &testv1.CaseValue{
+		// V: structpb.NewBoolValue(false),
+		// Strs: strs,
+		Nus: []structpb.NullValue{structpb.NullValue_NULL_VALUE, structpb.NullValue_NULL_VALUE},
+		Vs: []*structpb.Value{
+			structpb.NewNullValue(),
+			// nil,
+			// structpb.NewBoolValue(false),
+			&structpb.Value{
+				Kind: &structpb.Value_StructValue{}, // protojson marshal一个 nil struct value 为 {}
+			},
+		},
+	}
+	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
 	// a, _ := anypb.New(&testv1.Message{Id: "idA"})
 	// m.A = a
+
+	var jsn string
+	var err error
+
+	jsn, err = pMarshalToString((*structpb.Struct)(nil))
+	assert.Nil(t, err)
+	log.Println(string(jsn))
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 
-	jsn, err := cfg.MarshalToString(m)
+	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
 	log.Println(string(jsn))
 
 	// TODO: null 和 value 以及 null_value 的前后转换，参考protojson特性
+
 }

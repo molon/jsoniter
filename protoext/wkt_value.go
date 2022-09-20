@@ -48,15 +48,16 @@ var wktValueCodec = NewElemTypeCodec(
 			}
 		case *structpb.Value_StructValue:
 			if v != nil {
-				stream.WriteVal(v)
+				stream.WriteVal(v.StructValue)
 				return
 			}
 		case *structpb.Value_ListValue:
 			if v != nil {
-				stream.WriteVal(v)
+				stream.WriteVal(v.ListValue)
 				return
 			}
 		}
+		// TODO: 如果是在一个数组里不应该出现nil啊？咋办
 		stream.WriteNil()
 	},
 	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {

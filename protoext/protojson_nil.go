@@ -7,6 +7,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // https://github.com/golang/protobuf/issues/1487
@@ -15,8 +16,11 @@ func decorateEncoderOfNilCollection(typ reflect2.Type, encoder jsoniter.ValEncod
 	// - marshal nil []byte to ""
 	// - marshal nil slice to []
 	// - marshal nil map to {}
-	switch typ.Kind() {
-	case reflect.Slice, reflect.Map:
+	// - marshal (*structpb.Struct)(nil) to {}
+	// - marshal (*structpb.ListValue)(nil) to []
+	if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map ||
+		(typ == reflect2.TypeOfPtr((*structpb.Struct)(nil))) ||
+		(typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil))) {
 		return &funcEncoder{
 			fun: func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 				if *((*unsafe.Pointer)(ptr)) == nil {
@@ -26,8 +30,10 @@ func decorateEncoderOfNilCollection(typ reflect2.Type, encoder jsoniter.ValEncod
 							return
 						}
 						stream.WriteEmptyArray()
-					} else if typ.Kind() == reflect.Map {
+					} else if typ.Kind() == reflect.Map || (typ == reflect2.TypeOfPtr((*structpb.Struct)(nil))) {
 						stream.WriteEmptyObject()
+					} else if typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil)) {
+						stream.WriteEmptyArray()
 					}
 					return
 				}
@@ -62,7 +68,7 @@ func (v *lazyValue) Get() interface{} {
 
 var lazyPtrWithZeroValueMap sync.Map
 
-// - marshal []type{a,null,c} to [a,zero,c]
+// - marshal []type{a,nil,c} to [a,zero,c]
 // - marshal map[string]type to {"a":"valueA",b:zero,c:"valueC"}
 func noNullElemEncoderForCollection(valueType reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	return &funcEncoder{

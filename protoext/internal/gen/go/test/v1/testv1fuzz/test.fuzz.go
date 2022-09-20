@@ -19,6 +19,8 @@ func FuzzMessage(x *v1.Message, f gofuzz.Continue) {
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzCaseValue(x *v1.CaseValue, f gofuzz.Continue) {
 	f.Fuzz(&x.Strs)
+	f.Fuzz(&x.Nus)
+	f.Fuzz(&x.Vs)
 }
 
 // FuzzCase is a fuzz function.

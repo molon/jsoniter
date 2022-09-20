@@ -3,6 +3,7 @@ package protoext
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -17,6 +18,7 @@ type protojsonEncoder struct {
 }
 
 func (enc *protojsonEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	// TODO: indent?
 	data, err := enc.marshalOpts.Marshal(enc.valueType.PackEFace(ptr).(proto.Message))
 	if err != nil {
 		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", reflect2.PtrTo(enc.valueType), err)
@@ -47,4 +49,72 @@ func (dec *protojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 			reflect2.PtrTo(dec.valueType), err,
 		))
 	}
+}
+
+func (e *ProtoExtension) createProtoMessageEncoder(typ reflect2.Type) (xret jsoniter.ValEncoder) {
+	if v, ok := ProtoMessageCodecs[typ]; ok {
+		defer func() {
+			if xret != nil && typ.Kind() == reflect.Ptr {
+				xret = &jsoniter.OptionalEncoder{
+					ValueEncoder: xret,
+				}
+			}
+		}()
+		var codec *Codec
+		if v != nil {
+			switch vv := v.(type) {
+			case CodecCreator:
+				codec = vv(e)
+			case *Codec:
+				codec = vv
+			default:
+				panic(fmt.Sprintf("invalid ProtoMessageCodecs value: %v:%#v", typ, v))
+			}
+		}
+		if codec != nil && codec.Encoder != nil {
+			return codec.Encoder
+		}
+		// If not specified, use protojson for processing
+		return &protojsonEncoder{
+			valueType: typ,
+			marshalOpts: protojson.MarshalOptions{
+				EmitUnpopulated: e.EmitUnpopulated,
+				UseEnumNumbers:  e.UseEnumNumbers,
+				UseProtoNames:   e.UseProtoNames,
+				Resolver:        e.Resolver,
+			},
+		}
+	}
+	return nil
+}
+
+func (e *ProtoExtension) createProtoMessageDecoder(typ reflect2.Type) (xret jsoniter.ValDecoder) {
+	if v, ok := ProtoMessageCodecs[typ]; ok {
+		defer func() {
+			if xret != nil && typ.Kind() == reflect.Ptr {
+				xret = &jsoniter.OptionalDecoder{
+					ValueDecoder: xret,
+				}
+			}
+		}()
+		var codec *Codec
+		if v != nil {
+			switch vv := v.(type) {
+			case CodecCreator:
+				codec = vv(e)
+			case *Codec:
+				codec = vv
+			default:
+				panic(fmt.Sprintf("invalid ProtoMessageCodecs value: %v:%#v", typ, v))
+			}
+		}
+		if codec != nil && codec.Decoder != nil {
+			return codec.Decoder
+		}
+		// If not specified, use protojson for processing
+		return &protojsonDecoder{
+			valueType: typ,
+		}
+	}
+	return nil
 }

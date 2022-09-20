@@ -7,7 +7,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -18,7 +17,8 @@ type ProtoExtension struct {
 	EmitUnpopulated bool
 	UseEnumNumbers  bool
 	UseProtoNames   bool
-	Resolver        interface {
+	// TODO: 目前还未考虑 Unmarshal 里对 FindExtensionByName 的逻辑相关处理
+	Resolver interface {
 		protoregistry.MessageTypeResolver
 		protoregistry.ExtensionTypeResolver
 	}
@@ -27,20 +27,8 @@ type ProtoExtension struct {
 }
 
 func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
-	if codec, ok := ProtoMessageCodecs[typ]; ok {
-		if codec != nil && codec.Encoder != nil {
-			return codec.Encoder
-		}
-		// If not specified, use protojson for processing
-		return &protojsonEncoder{
-			valueType: typ,
-			marshalOpts: protojson.MarshalOptions{
-				EmitUnpopulated: e.EmitUnpopulated,
-				UseEnumNumbers:  e.UseEnumNumbers,
-				UseProtoNames:   e.UseProtoNames,
-				Resolver:        e.Resolver,
-			},
-		}
+	if enc := e.createProtoMessageEncoder(typ); enc != nil {
+		return enc
 	}
 
 	if !e.UseEnumNumbers {
@@ -56,14 +44,8 @@ func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 }
 
 func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
-	if codec, ok := ProtoMessageCodecs[typ]; ok {
-		if codec != nil && codec.Decoder != nil {
-			return codec.Decoder
-		}
-		// If not specified, use protojson for processing
-		return &protojsonDecoder{
-			valueType: typ,
-		}
+	if dec := e.createProtoMessageDecoder(typ); dec != nil {
+		return dec
 	}
 
 	// we want fuzzy decode, so does not need to check e.UseEnumNumbers
