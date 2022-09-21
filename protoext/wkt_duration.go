@@ -20,7 +20,7 @@ const (
 
 var wktDurationCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-		s, err := marshalDuration(((*durationpb.Duration)(ptr)))
+		s, err := marshalWktDuration(((*durationpb.Duration)(ptr)))
 		if err != nil {
 			stream.Error = err
 			return
@@ -29,14 +29,14 @@ var wktDurationCodec = NewElemTypeCodec(
 	},
 	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		s := iter.ReadString()
-		if err := unmarshalDuration(s, (*durationpb.Duration)(ptr)); err != nil {
+		if err := unmarshalWktDuration(s, (*durationpb.Duration)(ptr)); err != nil {
 			iter.ReportError("protobuf", err.Error())
 			return
 		}
 	},
 )
 
-func marshalDuration(m *durationpb.Duration) (string, error) {
+func marshalWktDuration(m *durationpb.Duration) (string, error) {
 	secs := m.GetSeconds()
 	nanos := m.GetNanos()
 	if secs < -maxSecondsInDuration || secs > maxSecondsInDuration {
@@ -61,7 +61,7 @@ func marshalDuration(m *durationpb.Duration) (string, error) {
 	return x + "s", nil
 }
 
-func unmarshalDuration(s string, m *durationpb.Duration) error {
+func unmarshalWktDuration(s string, m *durationpb.Duration) error {
 	secs, nanos, ok := parseDuration(s)
 	if !ok {
 		return fmt.Errorf("invalid %v value %v", Duration_message_fullname, s)

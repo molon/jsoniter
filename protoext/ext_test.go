@@ -213,12 +213,7 @@ func TestWkt(t *testing.T) {
 	cfg.RegisterExtension(&extra.EmitEmptyExtension{})
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"a":null,"d":"36s","t":"2022-06-09T21:03:49.560Z","st":null,"i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"b":null,"s":null,"by":null,"fm":"f.displayName,f.b.c","em":{},"nu":null}`, jsn)
-
-	m2 := &M{}
-	err = cfg.UnmarshalFromString(jsn, m2)
-	assert.Nil(t, err)
-	assert.Equal(t, m, m2)
+	assert.Equal(t, `{"a":null,"d":"36s","t":"2022-06-09T21:03:49.560Z","st":{},"i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"b":null,"s":null,"by":null,"fm":"f.displayName,f.b.c","em":{},"nu":null}`, jsn)
 }
 
 func TestUnmarshalExistWkt(t *testing.T) {

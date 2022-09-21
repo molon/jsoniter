@@ -19,7 +19,7 @@ const (
 
 var wktTimestampCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-		s, err := marshalTimestamp(((*timestamppb.Timestamp)(ptr)))
+		s, err := marshalWktTimestamp(((*timestamppb.Timestamp)(ptr)))
 		if err != nil {
 			stream.Error = err
 			return
@@ -28,14 +28,14 @@ var wktTimestampCodec = NewElemTypeCodec(
 	},
 	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		s := iter.ReadString()
-		if err := unmarshalTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
+		if err := unmarshalWktTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
 			iter.ReportError("protobuf", err.Error())
 			return
 		}
 	},
 )
 
-func marshalTimestamp(m *timestamppb.Timestamp) (string, error) {
+func marshalWktTimestamp(m *timestamppb.Timestamp) (string, error) {
 	secs := m.Seconds
 	nanos := int64(m.Nanos)
 	if secs < minTimestampSeconds || secs > maxTimestampSeconds {
@@ -54,7 +54,7 @@ func marshalTimestamp(m *timestamppb.Timestamp) (string, error) {
 	return x + "Z", nil
 }
 
-func unmarshalTimestamp(s string, m *timestamppb.Timestamp) error {
+func unmarshalWktTimestamp(s string, m *timestamppb.Timestamp) error {
 	t, err := time.Parse(time.RFC3339Nano, s)
 	if err != nil {
 		return fmt.Errorf("invalid %v value %v: %w", Timestamp_message_fullname, s, err)

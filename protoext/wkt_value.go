@@ -12,63 +12,69 @@ import (
 )
 
 const (
-	Value_message_fullname protoreflect.FullName = "google.protobuf.Value"
-	// Value_Kind_oneof_name  protoreflect.Name     = "kind"
-	// Value_NumberValue_field_number   protoreflect.FieldNumber = 2
+	Value_message_fullname           protoreflect.FullName = "google.protobuf.Value"
 	Value_NumberValue_field_fullname protoreflect.FullName = "google.protobuf.Value.number_value"
 )
 
 var wktValueCodec = NewElemTypeCodec(
 	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		x := ((*structpb.Value)(ptr))
-		switch v := x.GetKind().(type) {
-		case *structpb.Value_NullValue:
-			if v != nil {
-				stream.WriteNil()
-				return
-			}
-		case *structpb.Value_NumberValue:
-			if v != nil {
-				if math.IsNaN(v.NumberValue) || math.IsInf(v.NumberValue, 0) {
-					stream.Error = fmt.Errorf("%s: invalid %v value", Value_NumberValue_field_fullname, v)
-					return
-				}
-				stream.WriteFloat64(v.NumberValue)
-				return
-			}
-		case *structpb.Value_StringValue:
-			if v != nil {
-				stream.WriteString(v.StringValue)
-				return
-			}
-		case *structpb.Value_BoolValue:
-			if v != nil {
-				stream.WriteBool(v.BoolValue)
-				return
-			}
-		case *structpb.Value_StructValue:
-			if v != nil {
-				stream.WriteVal(v.StructValue)
-				return
-			}
-		case *structpb.Value_ListValue:
-			if v != nil {
-				stream.WriteVal(v.ListValue)
-				return
-			}
+		err := marshalWktValue(x, stream)
+		if err != nil {
+			stream.Error = fmt.Errorf("%s: %w", Value_message_fullname, err)
+			return
 		}
-		// TODO: 如果是在一个数组里不应该出现nil啊？咋办
-		stream.WriteNil()
 	},
 	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-		err := unmarshalValue(((*structpb.Value)(ptr)), iter)
+		err := unmarshalWktValue(((*structpb.Value)(ptr)), iter)
 		if err != nil {
 			iter.ReportError("protobuf", fmt.Sprintf("%s: %v", Value_message_fullname, err))
 		}
 	},
 )
 
-func unmarshalValue(x *structpb.Value, iter *jsoniter.Iterator) error {
+func marshalWktValue(x *structpb.Value, stream *jsoniter.Stream) error {
+	switch v := x.GetKind().(type) {
+	case *structpb.Value_NullValue:
+		if v != nil {
+			stream.WriteNil()
+			return nil
+		}
+	case *structpb.Value_NumberValue:
+		if v != nil {
+			if math.IsNaN(v.NumberValue) || math.IsInf(v.NumberValue, 0) {
+				return fmt.Errorf("%s: invalid %v value", Value_NumberValue_field_fullname, v)
+			}
+			stream.WriteFloat64(v.NumberValue)
+			return nil
+		}
+	case *structpb.Value_StringValue:
+		if v != nil {
+			stream.WriteString(v.StringValue)
+			return nil
+		}
+	case *structpb.Value_BoolValue:
+		if v != nil {
+			stream.WriteBool(v.BoolValue)
+			return nil
+		}
+	case *structpb.Value_StructValue:
+		if v != nil {
+			stream.WriteVal(v.StructValue)
+			return nil
+		}
+	case *structpb.Value_ListValue:
+		if v != nil {
+			stream.WriteVal(v.ListValue)
+			return nil
+		}
+	}
+	// TODO: 如果是在一个数组里不应该出现nil啊？咋办
+	stream.WriteNil()
+	return nil
+}
+
+func unmarshalWktValue(x *structpb.Value, iter *jsoniter.Iterator) error {
 	valueType := iter.WhatIsNext()
 	switch valueType {
 	case jsoniter.NilValue:
