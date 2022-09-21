@@ -26,6 +26,16 @@ type ProtoExtension struct {
 	Encode64BitAsInteger bool
 }
 
+func (e *ProtoExtension) GetResolver() interface {
+	protoregistry.MessageTypeResolver
+	protoregistry.ExtensionTypeResolver
+} {
+	if e.Resolver != nil {
+		return e.Resolver
+	}
+	return protoregistry.GlobalTypes
+}
+
 func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 	if enc := e.createProtoEncoder(typ); enc != nil {
 		return enc

@@ -23,9 +23,10 @@ type wktAnyEncoder struct {
 
 func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	m := ((*anypb.Any)(ptr))
+	resolver := c.ext.GetResolver()
 
 	// Resolve the type in order to unmarshal value field.
-	emt, err := c.ext.Resolver.FindMessageByURL(m.GetTypeUrl())
+	emt, err := resolver.FindMessageByURL(m.GetTypeUrl())
 	if err != nil {
 		stream.Error = fmt.Errorf("%s: unable to resolve %q: %v", Any_message_fullname, m.GetTypeUrl(), err)
 		return
@@ -34,7 +35,7 @@ func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	em := emt.New().Interface()
 	err = proto.UnmarshalOptions{
 		AllowPartial: true, // never check required fields inside an Any
-		Resolver:     c.ext.Resolver,
+		Resolver:     resolver,
 	}.Unmarshal(m.GetValue(), em)
 	if err != nil {
 		stream.Error = fmt.Errorf("%s: unable to unmarshal %q: %v", Any_message_fullname, m.GetTypeUrl(), err)

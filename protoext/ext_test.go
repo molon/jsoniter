@@ -63,6 +63,7 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 
 	jsnA, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
+	log.Printf("%v", jsnA)
 	jsnB, err = pMarshalToStringWithOpts(*opts, m)
 	assert.Nil(t, err)
 	assert.Equal(t, jsnA, jsnB)
@@ -240,7 +241,7 @@ func TestNullValueEnum(t *testing.T) {
 	nu := structpb.NullValue_NULL_VALUE
 	// var err error
 	m := &testv1.All{
-		OptWkt: &testv1.WKTOptionals{
+		OptWkt: &testv1.OptionalWKTs{
 			Nu: &nu,
 		},
 	}
@@ -374,7 +375,7 @@ func TestInteger64AsString(t *testing.T) {
 				wrapperspb.UInt64(555), wrapperspb.UInt64(666),
 			},
 		},
-		OptWkt: &testv1.WKTOptionals{
+		OptWkt: &testv1.OptionalWKTs{
 			I64: wrapperspb.Int64(-777),
 			U64: wrapperspb.UInt64(888),
 		},
@@ -580,11 +581,43 @@ func TestNilValues(t *testing.T) {
 			3: nil,
 			// 18081233737888512426: wrapperspb.UInt64(0),
 		},
+		WktV:  nil,
+		WktLv: (*(structpb.ListValue))(nil),
+		WktS:  nil,
 	}
+
+	lv, err := structpb.NewList([]interface{}{"a", nil, "c"})
+	assert.Nil(t, err)
+	m.RptWktV = []*structpb.Value{
+		structpb.NewBoolValue(true),
+		// nil, // cant be nil, same with protojson
+		structpb.NewListValue(lv),
+		&structpb.Value{
+			Kind: &structpb.Value_StructValue{}, // protojson marshal一个 nil struct value 为 {}
+		},
+	}
+
+	s, err := structpb.NewStruct(map[string]interface{}{
+		"keyA": "valueA",
+		"keyB": nil,
+		"keyC": "valueC",
+	})
+	assert.Nil(t, err)
+	m.RptWktS = []*structpb.Struct{s, (*structpb.Struct)(nil)}
+	m.RptWktLv = []*structpb.ListValue{nil, lv, nil}
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+
+	// TODO: if root returns not null
+	// v := (*structpb.Struct)(nil)
+	// commonCheck(t, cfg, nil, v)
+
+	jsn, err := pMarshalToString((*(wrapperspb.Int32Value))(nil))
+	log.Printf("%v", jsn)
+	cfg.MarshalToString((*(wrapperspb.Int32Value))(nil))
+	log.Printf("%v", jsn)
 }
 
 func TestCaseNull(t *testing.T) {
@@ -642,7 +675,4 @@ func TestCaseNull(t *testing.T) {
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
 	log.Println(string(jsn))
-
-	// TODO: null 和 value 以及 null_value 的前后转换，参考protojson特性
-
 }

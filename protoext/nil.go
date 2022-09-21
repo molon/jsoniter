@@ -7,7 +7,6 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // https://github.com/golang/protobuf/issues/1487
@@ -16,12 +15,8 @@ func decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEnco
 	// - marshal nil []byte to ""
 	// - marshal nil slice to []
 	// - marshal nil map to {}
-	// - marshal (*structpb.Struct)(nil) to {}
-	// - marshal (*structpb.ListValue)(nil) to []
-
-	// TODO: ListValue.Values 和 Struct.Fields 也需要判断？
-	isList := typ.Kind() == reflect.Slice || (typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil)))
-	isLikeMap := typ.Kind() == reflect.Map || (typ == reflect2.TypeOfPtr((*structpb.Struct)(nil)))
+	isList := typ.Kind() == reflect.Slice
+	isLikeMap := typ.Kind() == reflect.Map
 	if isList || isLikeMap {
 		isBytes := typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8
 		return &funcEncoder{
@@ -108,7 +103,6 @@ func noNullElemEncoderForCollection(valueType reflect2.Type, encoder jsoniter.Va
 }
 
 func (e *ProtoExtension) UpdateMapEncoderConstructor(v *jsoniter.MapEncoderConstructor) {
-	// TODO: key not nil??
 	v.ElemEncoder = noNullElemEncoderForCollection(v.MapType.Elem(), v.ElemEncoder)
 }
 

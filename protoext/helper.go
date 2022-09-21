@@ -74,10 +74,31 @@ func (encoder *dynamicEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return encoder.valType.UnsafeIndirect(ptr) == nil
 }
 
+type OptionalEncoder struct {
+	ValueEncoder jsoniter.ValEncoder
+	IfNil        func(stream *jsoniter.Stream)
+}
+
+func (encoder *OptionalEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	if *((*unsafe.Pointer)(ptr)) == nil {
+		if encoder.IfNil != nil {
+			encoder.IfNil(stream)
+		} else {
+			stream.WriteNil()
+		}
+	} else {
+		encoder.ValueEncoder.Encode(*((*unsafe.Pointer)(ptr)), stream)
+	}
+}
+
+func (encoder *OptionalEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+	return *((*unsafe.Pointer)(ptr)) == nil
+}
+
 func WrapElemEncoder(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEncoder {
 	if typ.Kind() == reflect.Ptr {
 		if typ.(reflect2.PtrType).Elem().Kind() == reflect.Struct {
-			return &jsoniter.OptionalEncoder{
+			return &OptionalEncoder{
 				ValueEncoder: enc,
 			}
 		}
@@ -88,8 +109,10 @@ func WrapElemEncoder(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEnc
 
 func WrapElemDecoder(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
 	if typ.Kind() == reflect.Ptr {
-		if typ.(reflect2.PtrType).Elem().Kind() == reflect.Struct {
+		elemType := typ.(reflect2.PtrType).Elem()
+		if elemType.Kind() == reflect.Struct {
 			return &jsoniter.OptionalDecoder{
+				ValueType:    elemType,
 				ValueDecoder: dec,
 			}
 		}

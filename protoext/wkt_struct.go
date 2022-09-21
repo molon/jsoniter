@@ -11,6 +11,10 @@ import (
 var wktStructCodec = (&ProtoCodec{}).
 	SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		x := ((*structpb.Struct)(ptr))
+		if x.Fields == nil {
+			stream.WriteEmptyObject()
+			return
+		}
 		stream.WriteVal(x.Fields)
 	}).
 	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {

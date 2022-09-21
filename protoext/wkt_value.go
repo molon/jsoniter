@@ -77,6 +77,7 @@ func unmarshalWktValue(x *structpb.Value, iter *jsoniter.Iterator) error {
 	valueType := iter.WhatIsNext()
 	switch valueType {
 	case jsoniter.NilValue:
+		iter.ReadNil()
 		x.Kind = &structpb.Value_NullValue{
 			NullValue: structpb.NullValue_NULL_VALUE,
 		}
