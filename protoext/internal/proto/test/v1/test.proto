@@ -56,9 +56,16 @@ message Case {
   }
 
   repeated Message rpt_msg = 41;
-  map<string,Message> map_msg = 42;
+  map<string, Message> map_msg = 42;
   map<string, JsonEnum> map_enum = 43;
   map<uint64, google.protobuf.UInt64Value> map_wkt_u64 = 44;
+
+  google.protobuf.Value wkt_v = 51;
+  google.protobuf.Struct wkt_s = 52;
+  google.protobuf.ListValue wkt_lv = 53;
+  repeated google.protobuf.Value rpt_wkt_v = 54;
+  repeated google.protobuf.Struct rpt_wkt_s = 55;
+  repeated google.protobuf.ListValue rpt_wkt_lv = 56;
 }
 
 message All {
@@ -75,7 +82,7 @@ message All {
   string snake_case = 11;
   string lowerCamelCase = 12;
   string UpwerCamelCase = 13;
-  WKTOptionals opt_wkt = 14;
+  OptionalWKTs opt_wkt = 14;
 }
 
 message Repeated {
@@ -118,25 +125,6 @@ message Optionals {
   optional JsonEnum e = 17;
 }
 
-message WKTOptionals {
-  optional google.protobuf.Any a = 1;
-  optional google.protobuf.Duration d = 2;
-  optional google.protobuf.Timestamp t = 3;
-  optional google.protobuf.Struct st = 4;
-  optional google.protobuf.Int32Value i32 = 5;
-  optional google.protobuf.UInt32Value ui32 = 7;
-  optional google.protobuf.Int64Value i64 = 8;
-  optional google.protobuf.UInt64Value u64 = 13;
-  optional google.protobuf.FloatValue f32 = 9;
-  optional google.protobuf.DoubleValue f64 = 10;
-  optional google.protobuf.BoolValue b = 11;
-  optional google.protobuf.StringValue s = 6;
-  optional google.protobuf.BytesValue by = 12;
-  optional google.protobuf.FieldMask fm = 14;
-  optional google.protobuf.Empty em = 15;
-  optional google.protobuf.NullValue nu = 16;
-}
-
 enum JsonEnum {
   JSON_ENUM_UNSPECIFIED = 0;
   JSON_ENUM_SOME = 1;
@@ -159,9 +147,8 @@ message WKTs {
   google.protobuf.FieldMask fm = 14;
   google.protobuf.Empty em = 15;
   google.protobuf.NullValue nu = 16;
-  // TODO: cant gofuzz now
-  // google.protobuf.Value v = 17;
-  // google.protobuf.ListValue lv = 18;
+  google.protobuf.Value v = 17;
+  google.protobuf.ListValue lv = 18;
 }
 
 message RepeatedWKTs {
@@ -181,7 +168,32 @@ message RepeatedWKTs {
   repeated google.protobuf.FieldMask fm = 14;
   repeated google.protobuf.Empty em = 15;
   repeated google.protobuf.NullValue nu = 16;
+  repeated google.protobuf.Value v = 17;
+  repeated google.protobuf.ListValue lv = 18;
 }
+
+
+message OptionalWKTs {
+  optional google.protobuf.Any a = 1;
+  optional google.protobuf.Duration d = 2;
+  optional google.protobuf.Timestamp t = 3;
+  optional google.protobuf.Struct st = 4;
+  optional google.protobuf.Int32Value i32 = 5;
+  optional google.protobuf.UInt32Value ui32 = 7;
+  optional google.protobuf.Int64Value i64 = 8;
+  optional google.protobuf.UInt64Value u64 = 13;
+  optional google.protobuf.FloatValue f32 = 9;
+  optional google.protobuf.DoubleValue f64 = 10;
+  optional google.protobuf.BoolValue b = 11;
+  optional google.protobuf.StringValue s = 6;
+  optional google.protobuf.BytesValue by = 12;
+  optional google.protobuf.FieldMask fm = 14;
+  optional google.protobuf.Empty em = 15;
+  optional google.protobuf.NullValue nu = 16;
+  optional google.protobuf.Value v = 17;
+  optional google.protobuf.ListValue lv = 18;
+}
+
 
 message OneOf {
   oneof one_of {
@@ -223,6 +235,8 @@ message OneOfWKT {
     google.protobuf.FieldMask fm = 14;
     google.protobuf.Empty em = 15;
     google.protobuf.NullValue nu = 16;
+    google.protobuf.Value v = 17;
+    google.protobuf.ListValue lv = 18;
   }
 }
 

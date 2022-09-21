@@ -50,6 +50,12 @@ func FuzzCase(x *v1.Case, f gofuzz.Continue) {
 	f.Fuzz(&x.MapMsg)
 	f.Fuzz(&x.MapEnum)
 	f.Fuzz(&x.MapWktU64)
+	f.Fuzz(&x.WktV)
+	f.Fuzz(&x.WktS)
+	f.Fuzz(&x.WktLv)
+	f.Fuzz(&x.RptWktV)
+	f.Fuzz(&x.RptWktS)
+	f.Fuzz(&x.RptWktLv)
 	switch f.Int31n(4) {
 	case 0:
 		var o v1.Case_OneofWktI32
@@ -129,27 +135,6 @@ func FuzzOptionals(x *v1.Optionals, f gofuzz.Continue) {
 	f.Fuzz(&x.E)
 }
 
-// FuzzWKTOptionals is a fuzz function.
-// If can be registered using `Fuzzer.Funcs` function.
-func FuzzWKTOptionals(x *v1.WKTOptionals, f gofuzz.Continue) {
-	f.Fuzz(&x.A)
-	f.Fuzz(&x.D)
-	f.Fuzz(&x.T)
-	f.Fuzz(&x.St)
-	f.Fuzz(&x.I32)
-	f.Fuzz(&x.Ui32)
-	f.Fuzz(&x.I64)
-	f.Fuzz(&x.U64)
-	f.Fuzz(&x.F32)
-	f.Fuzz(&x.F64)
-	f.Fuzz(&x.B)
-	f.Fuzz(&x.S)
-	f.Fuzz(&x.By)
-	f.Fuzz(&x.Fm)
-	f.Fuzz(&x.Em)
-	f.Fuzz(&x.Nu)
-}
-
 // FuzzWKTs is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzWKTs(x *v1.WKTs, f gofuzz.Continue) {
@@ -169,6 +154,8 @@ func FuzzWKTs(x *v1.WKTs, f gofuzz.Continue) {
 	f.Fuzz(&x.Fm)
 	f.Fuzz(&x.Em)
 	f.Fuzz(&x.Nu)
+	f.Fuzz(&x.V)
+	f.Fuzz(&x.Lv)
 }
 
 // FuzzRepeatedWKTs is a fuzz function.
@@ -190,6 +177,31 @@ func FuzzRepeatedWKTs(x *v1.RepeatedWKTs, f gofuzz.Continue) {
 	f.Fuzz(&x.Fm)
 	f.Fuzz(&x.Em)
 	f.Fuzz(&x.Nu)
+	f.Fuzz(&x.V)
+	f.Fuzz(&x.Lv)
+}
+
+// FuzzOptionalWKTs is a fuzz function.
+// If can be registered using `Fuzzer.Funcs` function.
+func FuzzOptionalWKTs(x *v1.OptionalWKTs, f gofuzz.Continue) {
+	f.Fuzz(&x.A)
+	f.Fuzz(&x.D)
+	f.Fuzz(&x.T)
+	f.Fuzz(&x.St)
+	f.Fuzz(&x.I32)
+	f.Fuzz(&x.Ui32)
+	f.Fuzz(&x.I64)
+	f.Fuzz(&x.U64)
+	f.Fuzz(&x.F32)
+	f.Fuzz(&x.F64)
+	f.Fuzz(&x.B)
+	f.Fuzz(&x.S)
+	f.Fuzz(&x.By)
+	f.Fuzz(&x.Fm)
+	f.Fuzz(&x.Em)
+	f.Fuzz(&x.Nu)
+	f.Fuzz(&x.V)
+	f.Fuzz(&x.Lv)
 }
 
 // FuzzOneOf is a fuzz function.
@@ -270,7 +282,7 @@ func FuzzOneOf(x *v1.OneOf, f gofuzz.Continue) {
 // FuzzOneOfWKT is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzOneOfWKT(x *v1.OneOfWKT, f gofuzz.Continue) {
-	switch f.Int31n(17) {
+	switch f.Int31n(19) {
 	case 0:
 		var o v1.OneOfWKT_A
 		f.Fuzz(&o.A)
@@ -334,6 +346,14 @@ func FuzzOneOfWKT(x *v1.OneOfWKT, f gofuzz.Continue) {
 	case 15:
 		var o v1.OneOfWKT_Nu
 		f.Fuzz(&o.Nu)
+		x.OneOf = &o
+	case 16:
+		var o v1.OneOfWKT_V
+		f.Fuzz(&o.V)
+		x.OneOf = &o
+	case 17:
+		var o v1.OneOfWKT_Lv
+		f.Fuzz(&o.Lv)
 		x.OneOf = &o
 	}
 }
