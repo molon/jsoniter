@@ -60,7 +60,7 @@ var ProtojsonEncoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsonite
 			UseProtoNames:   e.UseProtoNames,
 			Resolver:        e.Resolver,
 		},
-	})
+	}, nil)
 }
 
 var ProtojsonDecoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValDecoder {
@@ -70,7 +70,7 @@ var ProtojsonDecoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsonite
 			Resolver:       e.Resolver,
 			DiscardUnknown: true, // TODO: ???
 		},
-	})
+	}, nil)
 }
 
 func NewProtojsonCodec() *ProtoCodec {

@@ -92,7 +92,7 @@ func (c *wktAnyEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 
 var wktAnyCodec = &ProtoCodec{
 	EncoderCreator: func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValEncoder {
-		return WrapElemEncoder(typ, &wktAnyEncoder{ext: e})
+		return WrapElemEncoder(typ, &wktAnyEncoder{ext: e}, nil)
 	},
 	// TODO: 暂时借用
 	DecoderCreator: ProtojsonDecoderCreator,

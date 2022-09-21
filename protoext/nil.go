@@ -7,6 +7,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // https://github.com/golang/protobuf/issues/1487
@@ -39,6 +40,25 @@ func decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEnco
 			},
 			isEmptyFunc: func(ptr unsafe.Pointer) bool {
 				return encoder.IsEmpty(ptr)
+			},
+		}
+	}
+	return nil
+}
+
+var wktValuePtrType = reflect2.TypeOfPtr((*structpb.Value)(nil))
+
+func decorateDecoderForNil(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
+	// - unmarshal null to NULL value
+	if typ == wktValuePtrType {
+		return &funcDecoder{
+			fun: func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+				if iter.ReadNil() {
+					v := structpb.NewNullValue()
+					*((**structpb.Value)(ptr)) = v
+				} else {
+					dec.Decode(ptr, iter)
+				}
 			},
 		}
 	}

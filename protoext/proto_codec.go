@@ -36,7 +36,7 @@ func (codec *ProtoCodec) SetElemEncodeFunc(encodeFunc func(e *ProtoExtension, pt
 			fun: func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 				encodeFunc(e, ptr, stream)
 			},
-		})
+		}, nil)
 	}
 	return codec
 }
@@ -47,7 +47,7 @@ func (codec *ProtoCodec) SetElemDecodeFunc(decodeFunc func(e *ProtoExtension, pt
 			fun: func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 				decodeFunc(e, ptr, iter)
 			},
-		})
+		}, nil)
 	}
 	return codec
 }

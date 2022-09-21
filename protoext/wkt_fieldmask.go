@@ -34,7 +34,12 @@ var wktFieldmaskCodec = (&ProtoCodec{}).
 		stream.WriteString(strings.Join(paths, ","))
 	}).
 	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-		paths := strings.Split(iter.ReadString(), ",")
+		str := iter.ReadString()
+		if str == "" {
+			(*fieldmaskpb.FieldMask)(ptr).Paths = []string{}
+			return
+		}
+		paths := strings.Split(str, ",")
 		for idx, s0 := range paths {
 			s := JSONSnakeCase(s0)
 			if strings.Contains(s0, "_") || !protoreflect.FullName(s).IsValid() {

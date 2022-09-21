@@ -75,7 +75,7 @@ func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEnco
 
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	if enc := decorateEncoderForNilCollection(typ, encoder); enc != nil {
-		return enc
+		encoder = enc
 	}
 
 	if e.Encode64BitAsInteger {
@@ -93,6 +93,10 @@ func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.Val
 }
 
 func (e *ProtoExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
+	if dec := decorateDecoderForNil(typ, decoder); dec != nil {
+		decoder = dec
+	}
+
 	// fuzzy decode, so we dont check Encode64BitAsInteger
 	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 ||
 		wellKnown64BitIntegerTypes[typ] {

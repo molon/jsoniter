@@ -59,11 +59,19 @@ func marshalWktValue(x *structpb.Value, stream *jsoniter.Stream) error {
 		}
 	case *structpb.Value_StructValue:
 		if v != nil {
+			if v.StructValue == nil {
+				stream.WriteEmptyObject()
+				return nil
+			}
 			stream.WriteVal(v.StructValue)
 			return nil
 		}
 	case *structpb.Value_ListValue:
 		if v != nil {
+			if v.ListValue == nil {
+				stream.WriteEmptyArray()
+				return nil
+			}
 			stream.WriteVal(v.ListValue)
 			return nil
 		}

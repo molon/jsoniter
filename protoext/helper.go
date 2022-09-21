@@ -95,28 +95,56 @@ func (encoder *OptionalEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return *((*unsafe.Pointer)(ptr)) == nil
 }
 
-func WrapElemEncoder(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEncoder {
+type OptionalDecoder struct {
+	ValueType    reflect2.Type
+	ValueDecoder jsoniter.ValDecoder
+	IfNil        func(ptr unsafe.Pointer)
+}
+
+func (decoder *OptionalDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	if iter.ReadNil() {
+		if decoder.IfNil != nil {
+			decoder.IfNil(ptr)
+			return
+		}
+		*((*unsafe.Pointer)(ptr)) = nil
+	} else {
+		if *((*unsafe.Pointer)(ptr)) == nil {
+			//pointer to null, we have to allocate memory to hold the value
+			newPtr := decoder.ValueType.UnsafeNew()
+			decoder.ValueDecoder.Decode(newPtr, iter)
+			*((*unsafe.Pointer)(ptr)) = newPtr
+		} else {
+			//reuse existing instance
+			decoder.ValueDecoder.Decode(*((*unsafe.Pointer)(ptr)), iter)
+		}
+	}
+}
+
+func WrapElemEncoder(typ reflect2.Type, enc jsoniter.ValEncoder, ifNil func(stream *jsoniter.Stream)) jsoniter.ValEncoder {
 	if typ.Kind() == reflect.Ptr {
 		if typ.(reflect2.PtrType).Elem().Kind() == reflect.Struct {
 			return &OptionalEncoder{
 				ValueEncoder: enc,
+				IfNil:        ifNil,
 			}
 		}
-		panic(fmt.Sprintf("WrapElemEncoder does not support type %v", typ))
+		panic(fmt.Sprintf("WrapElemEncoderWithIfNil does not support type %v", typ))
 	}
 	return enc
 }
 
-func WrapElemDecoder(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
+func WrapElemDecoder(typ reflect2.Type, dec jsoniter.ValDecoder, ifNil func(ptr unsafe.Pointer)) jsoniter.ValDecoder {
 	if typ.Kind() == reflect.Ptr {
 		elemType := typ.(reflect2.PtrType).Elem()
 		if elemType.Kind() == reflect.Struct {
-			return &jsoniter.OptionalDecoder{
+			return &OptionalDecoder{
 				ValueType:    elemType,
 				ValueDecoder: dec,
+				IfNil:        ifNil,
 			}
 		}
-		panic(fmt.Sprintf("WrapElemDecoder does not support type %v", typ))
+		panic(fmt.Sprintf("WrapElemDecoderIfNil does not support type %v", typ))
 	}
 	return dec
 }

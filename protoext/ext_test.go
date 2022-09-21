@@ -63,7 +63,7 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 
 	jsnA, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	log.Printf("%v", jsnA)
+	// log.Printf("%v", jsnA)
 	jsnB, err = pMarshalToStringWithOpts(*opts, m)
 	assert.Nil(t, err)
 	assert.Equal(t, jsnA, jsnB)
@@ -73,6 +73,14 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 	assert.Nil(t, err)
 	// TIPS: If you have operated on m, such as `Clone` `protojson.Marshal`, etc., you must use proto.Equal to check equality
 	assert.True(t, proto.Equal(m, m2))
+
+	err = pUnmarshalFromString(jsnA, m2)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(m, m2))
+
+	jsnA, err = pMarshalToStringWithOpts(*opts, m2)
+	assert.Nil(t, err)
+	assert.Equal(t, jsnA, jsnB)
 }
 
 func TestJsonName(t *testing.T) {
@@ -128,21 +136,25 @@ func TestJsonName(t *testing.T) {
 }
 
 func TestEmitUnpopulated(t *testing.T) {
-	// lv, _ := structpb.NewList([]interface{}{
-	// 	nil,
-	// 	true,
-	// 	-1,
-	// 	1.5,
-	// 	"str",
-	// 	[]byte(nil),
-	// 	map[string]interface{}{
-	// 		"b": false,
-	// 	},
-	// 	[]interface{}{
-	// 		1, 2, 3,
-	// 	},
-	// })
+	lv, _ := structpb.NewList([]interface{}{
+		nil,
+		true,
+		-1,
+		1.5,
+		"str",
+		[]byte(nil),
+		map[string]interface{}{
+			"b": false,
+		},
+		[]interface{}{
+			1, 2, 3, nil,
+		},
+	})
 	m := &testv1.All{
+		S: &testv1.Singular{
+			E:    testv1.JsonEnum_JSON_ENUM_UNSPECIFIED,
+			Si64: 0,
+		},
 		Wkt: &testv1.WKTs{
 			T:    timestamppb.New(timeCase),
 			D:    durationpb.New(36 * time.Second),
@@ -153,11 +165,10 @@ func TestEmitUnpopulated(t *testing.T) {
 			Nu:   structpb.NullValue_NULL_VALUE,
 
 			Em: &emptypb.Empty{},
-			Fm: &fieldmaskpb.FieldMask{
-				Paths: []string{"f.display_name", "f.b.c"},
-			},
+			V:  structpb.NewNullValue(),
+			Fm: &fieldmaskpb.FieldMask{},
 
-			// Lv: lv,
+			Lv: lv,
 		},
 	}
 
@@ -165,9 +176,9 @@ func TestEmitUnpopulated(t *testing.T) {
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	commonCheck(t, cfg, &protojson.MarshalOptions{}, m)
 
-	// cfg = jsoniter.Config{SortMapKeys: true}.Froze()
-	// cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
-	// commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
+	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
 
 func TestWkt(t *testing.T) {
@@ -214,7 +225,7 @@ func TestWkt(t *testing.T) {
 	cfg.RegisterExtension(&extra.EmitEmptyExtension{})
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"a":null,"d":"36s","t":"2022-06-09T21:03:49.560Z","st":{},"i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"b":null,"s":null,"by":null,"fm":"f.displayName,f.b.c","em":{},"nu":null}`, jsn)
+	assert.Equal(t, `{"a":null,"d":"36s","t":"2022-06-09T21:03:49.560Z","st":null,"i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"b":null,"s":null,"by":null,"fm":"f.displayName,f.b.c","em":{},"nu":null}`, jsn)
 }
 
 func TestUnmarshalExistWkt(t *testing.T) {
@@ -518,6 +529,26 @@ func TestOneof(t *testing.T) {
 }
 
 func TestNilValues(t *testing.T) {
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
+	mOpts := &protojson.MarshalOptions{EmitUnpopulated: true}
+
+	// TODO: protojson 会将root proto信息 zero 解析，我们貌似不太好兼容这个机制
+	jsn, err := pMarshalToStringWithOpts(*mOpts, (*wrapperspb.Int32Value)(nil))
+	log.Printf("%v", jsn)
+	jsn, err = cfg.MarshalToString((*wrapperspb.Int32Value)(nil))
+	log.Printf("%v", jsn)
+
+	jsn, err = pMarshalToStringWithOpts(*mOpts, (*testv1.Message)(nil))
+	log.Printf("%v", jsn)
+	jsn, err = cfg.MarshalToString((*testv1.Message)(nil))
+	log.Printf("%v", jsn)
+
+	jsn, err = pMarshalToStringWithOpts(*mOpts, (*structpb.Value)(nil))
+	log.Printf("%v", jsn)
+	jsn, err = cfg.MarshalToString((*structpb.Value)(nil))
+	log.Printf("%v", jsn)
+
 	i32 := int32(-123)
 	m := &testv1.Case{
 		WktI32A:    nil,
@@ -581,7 +612,7 @@ func TestNilValues(t *testing.T) {
 			3: nil,
 			// 18081233737888512426: wrapperspb.UInt64(0),
 		},
-		WktV:  nil,
+		WktV:  structpb.NewNullValue(),
 		WktLv: (*(structpb.ListValue))(nil),
 		WktS:  nil,
 	}
@@ -605,19 +636,11 @@ func TestNilValues(t *testing.T) {
 	assert.Nil(t, err)
 	m.RptWktS = []*structpb.Struct{s, (*structpb.Struct)(nil)}
 	m.RptWktLv = []*structpb.ListValue{nil, lv, nil}
-
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
-	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+	commonCheck(t, cfg, mOpts, m)
 
 	// TODO: if root returns not null
 	// v := (*structpb.Struct)(nil)
 	// commonCheck(t, cfg, nil, v)
-
-	jsn, err := pMarshalToString((*(wrapperspb.Int32Value))(nil))
-	log.Printf("%v", jsn)
-	cfg.MarshalToString((*(wrapperspb.Int32Value))(nil))
-	log.Printf("%v", jsn)
 }
 
 func TestCaseNull(t *testing.T) {
