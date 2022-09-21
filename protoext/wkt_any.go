@@ -3,7 +3,6 @@ package protoext
 import (
 	"fmt"
 	"io"
-	"reflect"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -45,11 +44,7 @@ func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	// If type of value has custom JSON encoding, marshal out a field "value"
 	// with corresponding custom JSON encoding of the embedded message as a
 	// field.
-	typ := reflect2.TypeOf(em)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.(reflect2.PtrType).Elem()
-	}
-	if IsWellKnownType(typ) {
+	if IsWellKnownType(reflect2.TypeOf(em)) {
 		stream.WriteObjectStart()
 		stream.WriteObjectField("@type")
 		stream.WriteString(m.GetTypeUrl())
@@ -138,12 +133,8 @@ func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 	}
 	em := emt.New().Interface()
 
-	typ := reflect2.TypeOf(em)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.(reflect2.PtrType).Elem()
-	}
 	var subIter *jsoniter.Iterator
-	if IsWellKnownType(typ) {
+	if IsWellKnownType(reflect2.TypeOf(em)) {
 		subIter = iter.API().BorrowIterator(valueBytes)
 	} else {
 		subIter = iter.API().BorrowIterator(subStream.Buffer())

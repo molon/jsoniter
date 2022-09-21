@@ -3,6 +3,7 @@ package protoext
 import (
 	"encoding/base64"
 	"fmt"
+	"reflect"
 	"strings"
 	"unsafe"
 
@@ -39,6 +40,9 @@ var WellKnownTypes = map[reflect2.Type]bool{
 }
 
 func IsWellKnownType(typ reflect2.Type) bool {
+	for typ.Kind() == reflect.Ptr {
+		typ = typ.(reflect2.PtrType).Elem()
+	}
 	return WellKnownTypes[typ]
 }
 
