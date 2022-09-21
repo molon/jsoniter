@@ -21,6 +21,36 @@ func fuzzNullValue(x *structpb.NullValue, f gofuzz.Continue) {
 	*x = structpb.NullValue_NULL_VALUE
 }
 
+func fuzzListValue(msg *structpb.ListValue, c gofuzz.Continue) {
+	fc := c.Rand.Intn(21)
+	msg.Values = make([]*structpb.Value, fc)
+	for i := 0; i < fc; i++ {
+		var v *structpb.Value
+		switch c.Int() % 3 {
+		case 0:
+			v = structpb.NewNumberValue(c.Float64())
+		case 1:
+			v = structpb.NewBoolValue(c.RandBool())
+		case 2:
+			v = structpb.NewStringValue(c.RandString())
+		}
+		msg.Values[i] = v
+	}
+}
+
+func fuzzValue(x *structpb.Value, c gofuzz.Continue) {
+	var v *structpb.Value
+	switch c.Int() % 3 {
+	case 0:
+		v = structpb.NewNumberValue(c.Float64())
+	case 1:
+		v = structpb.NewBoolValue(c.RandBool())
+	case 2:
+		v = structpb.NewStringValue(c.RandString())
+	}
+	x.Kind = v.Kind
+}
+
 func fuzzFieldMask(x *fieldmaskpb.FieldMask, c gofuzz.Continue) {
 	fc := c.Rand.Intn(21) + 1
 	x.Paths = make([]string, fc)
@@ -30,7 +60,7 @@ func fuzzFieldMask(x *fieldmaskpb.FieldMask, c gofuzz.Continue) {
 }
 
 func appendFuzzFuncs(f *gofuzz.Fuzzer) *gofuzz.Fuzzer {
-	return f.Funcs(testv1fuzz.FuzzFuncs()...).Funcs(goprotofuzz.FuzzWKT[:]...).Funcs(fuzzNullValue, fuzzFieldMask)
+	return f.Funcs(testv1fuzz.FuzzFuncs()...).Funcs(goprotofuzz.FuzzWKT[:]...).Funcs(fuzzNullValue, fuzzValue, fuzzListValue, fuzzFieldMask)
 }
 
 func FuzzReadWrite(f *testing.F) {
