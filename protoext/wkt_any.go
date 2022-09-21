@@ -78,6 +78,7 @@ func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	subIter.ReadObjectCB(func(iter *jsoniter.Iterator, field string) bool {
 		stream.WriteMore()
 		stream.WriteObjectField(field)
+		// TODO: indent?
 		stream.Write(iter.SkipAndReturnBytes())
 		return true
 	})
@@ -88,10 +89,10 @@ func (c *wktAnyEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return false // this is for elem type , so does not need this
 }
 
-var wktAnyCodecCreator = func(e *ProtoExtension) *Codec {
-	return &Codec{
-		Encoder: &wktAnyEncoder{ext: e},
-		// TODO: 暂且借用 protojson 的 Unmarshal 方法，但是得注意 ProtoExtension 里得提供 Resolver 的设置
-		// Decoder: jsoniter.ValDecoder,
-	}
+var wktAnyCodec = &ProtoCodec{
+	EncoderCreator: func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValEncoder {
+		return WrapElemEncoder(typ, &wktAnyEncoder{ext: e})
+	},
+	// TODO: 暂时借用
+	DecoderCreator: ProtojsonDecoderCreator,
 }

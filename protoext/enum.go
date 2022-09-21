@@ -2,6 +2,7 @@ package protoext
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"sync"
 	"unsafe"
@@ -13,7 +14,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// Full name for google.protobuf.NullValue.
 const (
 	NullValue_enum_fullname = "google.protobuf.NullValue"
 )
@@ -23,17 +23,38 @@ var (
 	protoEnumType    = reflect2.TypeOfPtr((*protoreflect.Enum)(nil)).Elem()
 )
 
-func createDecoderOfNullValueEnumPtr(typ reflect2.Type) jsoniter.ValDecoder {
-	if typ == nullValuePtrType {
-		return &funcDecoder{
-			fun: func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-				if iter.ReadNil() {
-					v := structpb.NullValue_NULL_VALUE
-					*((**structpb.NullValue)(ptr)) = &v
-				} else {
-					iter.ReportError("protobuf", fmt.Sprintf("%v: invalid value %v", NullValue_enum_fullname, string(iter.SkipAndReturnBytes())))
-				}
-			},
+func (e *ProtoExtension) createProtoEnumEncoder(typ reflect2.Type) (xret jsoniter.ValEncoder) {
+	if !e.UseEnumNumbers {
+		if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
+			// TODO: 如果直接是 interface 呢？
+			return &protoEnumNameEncoder{
+				valueType: typ,
+			}
+		}
+	}
+	return nil
+}
+
+func (e *ProtoExtension) createProtoEnumDecoder(typ reflect2.Type) (xret jsoniter.ValDecoder) {
+	// we want fuzzy decode, so does not need to check e.UseEnumNumbers
+	if typ.Implements(protoEnumType) {
+		if typ.Kind() != reflect.Ptr {
+			return &protoEnumDecoder{
+				valueType: typ,
+			}
+		}
+
+		if typ == nullValuePtrType {
+			return &funcDecoder{
+				fun: func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+					if iter.ReadNil() {
+						v := structpb.NullValue_NULL_VALUE
+						*((**structpb.NullValue)(ptr)) = &v
+					} else {
+						iter.ReportError("protobuf", fmt.Sprintf("%v: invalid value %v", NullValue_enum_fullname, string(iter.SkipAndReturnBytes())))
+					}
+				},
+			}
 		}
 	}
 	return nil

@@ -18,23 +18,22 @@ const (
 	Duration_message_fullname protoreflect.FullName = "google.protobuf.Duration"
 )
 
-var wktDurationCodec = NewElemTypeCodec(
-	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+var wktDurationCodec = (&ProtoCodec{}).
+	SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		s, err := marshalWktDuration(((*durationpb.Duration)(ptr)))
 		if err != nil {
 			stream.Error = err
 			return
 		}
 		stream.WriteString(s)
-	},
-	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	}).
+	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		s := iter.ReadString()
 		if err := unmarshalWktDuration(s, (*durationpb.Duration)(ptr)); err != nil {
 			iter.ReportError("protobuf", err.Error())
 			return
 		}
-	},
-)
+	})
 
 func marshalWktDuration(m *durationpb.Duration) (string, error) {
 	secs := m.GetSeconds()

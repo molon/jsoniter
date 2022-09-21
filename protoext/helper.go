@@ -1,6 +1,8 @@
 package protoext
 
 import (
+	"fmt"
+	"reflect"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -72,22 +74,26 @@ func (encoder *dynamicEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return encoder.valType.UnsafeIndirect(ptr) == nil
 }
 
-type Codec struct {
-	Encoder jsoniter.ValEncoder
-	Decoder jsoniter.ValDecoder
+func WrapElemEncoder(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEncoder {
+	if typ.Kind() == reflect.Ptr {
+		if typ.(reflect2.PtrType).Elem().Kind() == reflect.Struct {
+			return &jsoniter.OptionalEncoder{
+				ValueEncoder: enc,
+			}
+		}
+		panic(fmt.Sprintf("WrapElemEncoder does not support type %v", typ))
+	}
+	return enc
 }
 
-func NewElemTypeCodec(encodeFunc jsoniter.EncoderFunc, decodeFunc jsoniter.DecoderFunc) *Codec {
-	c := &Codec{}
-	if encodeFunc != nil {
-		c.Encoder = &funcEncoder{
-			fun: encodeFunc,
+func WrapElemDecoder(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
+	if typ.Kind() == reflect.Ptr {
+		if typ.(reflect2.PtrType).Elem().Kind() == reflect.Struct {
+			return &jsoniter.OptionalDecoder{
+				ValueDecoder: dec,
+			}
 		}
+		panic(fmt.Sprintf("WrapElemDecoder does not support type %v", typ))
 	}
-	if decodeFunc != nil {
-		c.Decoder = &funcDecoder{
-			fun: decodeFunc,
-		}
-	}
-	return c
+	return dec
 }

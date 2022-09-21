@@ -16,22 +16,21 @@ const (
 	Value_NumberValue_field_fullname protoreflect.FullName = "google.protobuf.Value.number_value"
 )
 
-var wktValueCodec = NewElemTypeCodec(
-	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+var wktValueCodec = (&ProtoCodec{}).
+	SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		x := ((*structpb.Value)(ptr))
 		err := marshalWktValue(x, stream)
 		if err != nil {
 			stream.Error = fmt.Errorf("%s: %w", Value_message_fullname, err)
 			return
 		}
-	},
-	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	}).
+	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		err := unmarshalWktValue(((*structpb.Value)(ptr)), iter)
 		if err != nil {
 			iter.ReportError("protobuf", fmt.Sprintf("%s: %v", Value_message_fullname, err))
 		}
-	},
-)
+	})
 
 func marshalWktValue(x *structpb.Value, stream *jsoniter.Stream) error {
 	switch v := x.GetKind().(type) {

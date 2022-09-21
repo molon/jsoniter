@@ -12,30 +12,31 @@ import (
 
 // https://github.com/golang/protobuf/issues/1487
 
-func decorateEncoderOfNilCollection(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
+func decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	// - marshal nil []byte to ""
 	// - marshal nil slice to []
 	// - marshal nil map to {}
 	// - marshal (*structpb.Struct)(nil) to {}
 	// - marshal (*structpb.ListValue)(nil) to []
-	if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map ||
-		(typ == reflect2.TypeOfPtr((*structpb.Struct)(nil))) ||
-		(typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil))) {
+	isList := typ.Kind() == reflect.Slice || (typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil)))
+	isLikeMap := typ.Kind() == reflect.Map || (typ == reflect2.TypeOfPtr((*structpb.Struct)(nil)))
+	if isList || isLikeMap {
+		isBytes := typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8
 		return &funcEncoder{
 			fun: func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 				if *((*unsafe.Pointer)(ptr)) == nil {
-					if typ.Kind() == reflect.Slice {
-						if typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
-							stream.Write([]byte{'"', '"'})
-							return
-						}
-						stream.WriteEmptyArray()
-					} else if typ.Kind() == reflect.Map || (typ == reflect2.TypeOfPtr((*structpb.Struct)(nil))) {
-						stream.WriteEmptyObject()
-					} else if typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil)) {
-						stream.WriteEmptyArray()
+					if isBytes {
+						stream.Write([]byte{'"', '"'})
+						return
 					}
-					return
+					if isList {
+						stream.WriteEmptyArray()
+						return
+					}
+					if isLikeMap {
+						stream.WriteEmptyObject()
+						return
+					}
 				}
 				encoder.Encode(ptr, stream)
 			},
@@ -105,6 +106,7 @@ func noNullElemEncoderForCollection(valueType reflect2.Type, encoder jsoniter.Va
 }
 
 func (e *ProtoExtension) UpdateMapEncoderConstructor(v *jsoniter.MapEncoderConstructor) {
+	// TODO: key not nil??
 	v.ElemEncoder = noNullElemEncoderForCollection(v.MapType.Elem(), v.ElemEncoder)
 }
 

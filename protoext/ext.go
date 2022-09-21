@@ -27,43 +27,26 @@ type ProtoExtension struct {
 }
 
 func (e *ProtoExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
-	if enc := e.createProtoMessageEncoder(typ); enc != nil {
+	if enc := e.createProtoEncoder(typ); enc != nil {
 		return enc
 	}
-
-	if !e.UseEnumNumbers {
-		if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
-			// TODO: 如果直接是 interface 呢？
-			return &protoEnumNameEncoder{
-				valueType: typ,
-			}
-		}
+	if enc := e.createProtoEnumEncoder(typ); enc != nil {
+		return enc
 	}
-
 	return nil
 }
 
 func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
-	if dec := e.createProtoMessageDecoder(typ); dec != nil {
+	if dec := e.createProtoDecoder(typ); dec != nil {
 		return dec
 	}
-
-	// we want fuzzy decode, so does not need to check e.UseEnumNumbers
-	if typ.Implements(protoEnumType) {
-		if typ.Kind() != reflect.Ptr {
-			return &protoEnumDecoder{
-				valueType: typ,
-			}
-		}
-
-		if decoder := createDecoderOfNullValueEnumPtr(typ); decoder != nil {
-			return decoder
-		}
+	if dec := e.createProtoEnumDecoder(typ); dec != nil {
+		return dec
 	}
-
 	return nil
 }
 
+// Handle 64BitInteger as string
 var wellKnown64BitIntegerTypes = map[reflect2.Type]bool{
 	reflect2.TypeOfPtr((*wrapperspb.Int64Value)(nil)).Elem():  true,
 	reflect2.TypeOfPtr((*wrapperspb.UInt64Value)(nil)).Elem(): true,
@@ -81,7 +64,7 @@ func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEnco
 }
 
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
-	if enc := decorateEncoderOfNilCollection(typ, encoder); enc != nil {
+	if enc := decorateEncoderForNilCollection(typ, encoder); enc != nil {
 		return enc
 	}
 
@@ -92,10 +75,8 @@ func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.Val
 	// https://github.com/protocolbuffers/protobuf-go/blob/e62d8edb7570c986a51e541c161a0c93bbaf9253/encoding/protojson/encode.go#L274-L277
 	// https://github.com/protocolbuffers/protobuf-go/pull/14
 	// https://github.com/golang/protobuf/issues/1414
-	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
-		return &stringModeNumberEncoder{encoder}
-	}
-	if wellKnown64BitIntegerTypes[typ] {
+	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 ||
+		wellKnown64BitIntegerTypes[typ] {
 		return &stringModeNumberEncoder{encoder}
 	}
 	return encoder
@@ -103,15 +84,14 @@ func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.Val
 
 func (e *ProtoExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
 	// fuzzy decode, so we dont check Encode64BitAsInteger
-	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
-		return &stringModeNumberDecoder{decoder}
-	}
-	if wellKnown64BitIntegerTypes[typ] {
+	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 ||
+		wellKnown64BitIntegerTypes[typ] {
 		return &stringModeNumberDecoder{decoder}
 	}
 	return decoder
 }
 
+// Handle EmitUnpopulated and UseProtoNames
 func (e *ProtoExtension) UpdateStructDescriptor(desc *jsoniter.StructDescriptor) {
 	for _, binding := range desc.Fields {
 		if len(binding.FromNames) <= 0 { // simple check should exported

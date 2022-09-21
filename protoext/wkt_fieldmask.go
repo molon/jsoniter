@@ -14,8 +14,8 @@ const (
 	FieldMask_Paths_field_fullname protoreflect.FullName = "google.protobuf.FieldMask.paths"
 )
 
-var wktFieldmaskCodec = NewElemTypeCodec(
-	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+var wktFieldmaskCodec = (&ProtoCodec{}).
+	SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		v := ((*fieldmaskpb.FieldMask)(ptr))
 		paths := make([]string, 0, len(v.GetPaths()))
 		for _, s := range v.GetPaths() {
@@ -32,8 +32,8 @@ var wktFieldmaskCodec = NewElemTypeCodec(
 			paths = append(paths, cc)
 		}
 		stream.WriteString(strings.Join(paths, ","))
-	},
-	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	}).
+	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		paths := strings.Split(iter.ReadString(), ",")
 		for idx, s0 := range paths {
 			s := JSONSnakeCase(s0)
@@ -44,8 +44,7 @@ var wktFieldmaskCodec = NewElemTypeCodec(
 			paths[idx] = s
 		}
 		(*fieldmaskpb.FieldMask)(ptr).Paths = paths
-	},
-)
+	})
 
 func isASCIILower(c byte) bool {
 	return 'a' <= c && c <= 'z'

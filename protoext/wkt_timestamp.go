@@ -17,23 +17,21 @@ const (
 	Timestamp_message_fullname protoreflect.FullName = "google.protobuf.Timestamp"
 )
 
-var wktTimestampCodec = NewElemTypeCodec(
-	func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+var wktTimestampCodec = (&ProtoCodec{}).
+	SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		s, err := marshalWktTimestamp(((*timestamppb.Timestamp)(ptr)))
 		if err != nil {
 			stream.Error = err
 			return
 		}
 		stream.WriteString(s)
-	},
-	func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-		s := iter.ReadString()
-		if err := unmarshalWktTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
-			iter.ReportError("protobuf", err.Error())
-			return
-		}
-	},
-)
+	}).SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	s := iter.ReadString()
+	if err := unmarshalWktTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
+		iter.ReportError("protobuf", err.Error())
+		return
+	}
+})
 
 func marshalWktTimestamp(m *timestamppb.Timestamp) (string, error) {
 	secs := m.Seconds

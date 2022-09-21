@@ -3,7 +3,6 @@ package protoext
 import (
 	"fmt"
 	"io"
-	"reflect"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -12,109 +11,71 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type protojsonEncoder struct {
-	valueType   reflect2.Type
-	marshalOpts protojson.MarshalOptions
+type ProtojsonEncoder struct {
+	ElemType    reflect2.Type
+	MarshalOpts protojson.MarshalOptions
 }
 
-func (enc *protojsonEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+func (enc *ProtojsonEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	// TODO: indent?
-	data, err := enc.marshalOpts.Marshal(enc.valueType.PackEFace(ptr).(proto.Message))
+	data, err := enc.MarshalOpts.Marshal(enc.ElemType.PackEFace(ptr).(proto.Message))
 	if err != nil {
-		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", reflect2.PtrTo(enc.valueType), err)
+		stream.Error = fmt.Errorf("error calling protojson.Marshal for type %s: %w", reflect2.PtrTo(enc.ElemType), err)
 		return
 	}
 	_, stream.Error = stream.Write(data)
 }
 
-func (enc *protojsonEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+func (enc *ProtojsonEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	// protojson will not omit zero value, only omit zero pointer, we stay compatible,
 	return false
 }
 
-type protojsonDecoder struct {
-	valueType reflect2.Type
+type ProtojsonDecoder struct {
+	ElemType      reflect2.Type
+	UnmarshalOpts protojson.UnmarshalOptions
 }
 
-func (dec *protojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+func (dec *ProtojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 	bytes := iter.SkipAndReturnBytes()
 	if iter.Error != nil && iter.Error != io.EOF {
 		return
 	}
 
-	err := protojson.Unmarshal(bytes, dec.valueType.PackEFace(ptr).(proto.Message))
+	err := dec.UnmarshalOpts.Unmarshal(bytes, dec.ElemType.PackEFace(ptr).(proto.Message))
 	if err != nil {
 		iter.ReportError("protobuf", fmt.Sprintf(
 			"error calling protojson.Unmarshal for type %s: %s",
-			reflect2.PtrTo(dec.valueType), err,
+			reflect2.PtrTo(dec.ElemType), err,
 		))
 	}
 }
 
-func (e *ProtoExtension) createProtoMessageEncoder(typ reflect2.Type) (xret jsoniter.ValEncoder) {
-	if v, ok := ProtoMessageCodecs[typ]; ok {
-		defer func() {
-			if xret != nil && typ.Kind() == reflect.Ptr {
-				xret = &jsoniter.OptionalEncoder{
-					ValueEncoder: xret,
-				}
-			}
-		}()
-		var codec *Codec
-		if v != nil {
-			switch vv := v.(type) {
-			case CodecCreator:
-				codec = vv(e)
-			case *Codec:
-				codec = vv
-			default:
-				panic(fmt.Sprintf("invalid ProtoMessageCodecs value: %v:%#v", typ, v))
-			}
-		}
-		if codec != nil && codec.Encoder != nil {
-			return codec.Encoder
-		}
-		// If not specified, use protojson for processing
-		return &protojsonEncoder{
-			valueType: typ,
-			marshalOpts: protojson.MarshalOptions{
-				EmitUnpopulated: e.EmitUnpopulated,
-				UseEnumNumbers:  e.UseEnumNumbers,
-				UseProtoNames:   e.UseProtoNames,
-				Resolver:        e.Resolver,
-			},
-		}
-	}
-	return nil
+var ProtojsonEncoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValEncoder {
+	return WrapElemEncoder(typ, &ProtojsonEncoder{
+		ElemType: typ,
+		MarshalOpts: protojson.MarshalOptions{
+			EmitUnpopulated: e.EmitUnpopulated,
+			UseEnumNumbers:  e.UseEnumNumbers,
+			UseProtoNames:   e.UseProtoNames,
+			Resolver:        e.Resolver,
+		},
+	})
 }
 
-func (e *ProtoExtension) createProtoMessageDecoder(typ reflect2.Type) (xret jsoniter.ValDecoder) {
-	if v, ok := ProtoMessageCodecs[typ]; ok {
-		defer func() {
-			if xret != nil && typ.Kind() == reflect.Ptr {
-				xret = &jsoniter.OptionalDecoder{
-					ValueDecoder: xret,
-				}
-			}
-		}()
-		var codec *Codec
-		if v != nil {
-			switch vv := v.(type) {
-			case CodecCreator:
-				codec = vv(e)
-			case *Codec:
-				codec = vv
-			default:
-				panic(fmt.Sprintf("invalid ProtoMessageCodecs value: %v:%#v", typ, v))
-			}
-		}
-		if codec != nil && codec.Decoder != nil {
-			return codec.Decoder
-		}
-		// If not specified, use protojson for processing
-		return &protojsonDecoder{
-			valueType: typ,
-		}
+var ProtojsonDecoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValDecoder {
+	return WrapElemDecoder(typ, &ProtojsonDecoder{
+		ElemType: typ,
+		UnmarshalOpts: protojson.UnmarshalOptions{
+			Resolver:       e.Resolver,
+			DiscardUnknown: true, // TODO: ???
+		},
+	})
+}
+
+func NewProtojsonCodec() *ProtoCodec {
+	return &ProtoCodec{
+		EncoderCreator: ProtojsonEncoderCreator,
+		DecoderCreator: ProtojsonDecoderCreator,
 	}
-	return nil
 }
