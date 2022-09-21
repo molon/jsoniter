@@ -19,10 +19,10 @@ message CaseValue {
   // google.protobuf.Value v = 1;
   // google.protobuf.Struct s = 2;
   // google.protobuf.ListValue l = 3;
-  // google.protobuf.Any a = 4;
-  repeated string strs = 1;
-  repeated google.protobuf.NullValue nus = 2;
-  repeated google.protobuf.Value vs = 3;
+  google.protobuf.Any a = 4;
+  // repeated string strs = 1;
+  // repeated google.protobuf.NullValue nus = 2;
+  // repeated google.protobuf.Value vs = 3;
 }
 
 message Case {

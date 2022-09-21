@@ -1,6 +1,7 @@
 package protoext
 
 import (
+	"fmt"
 	"io"
 	"unsafe"
 
@@ -25,6 +26,10 @@ var wktStructCodec = (&ProtoCodec{}).
 			v := &structpb.Value{}
 			iter.ReadVal(v)
 			if iter.Error != nil && iter.Error != io.EOF {
+				return false
+			}
+			if _, ok := fields[field]; ok {
+				iter.ReportError("protobuf", fmt.Sprintf(`duplicate %q field`, field))
 				return false
 			}
 			fields[field] = v

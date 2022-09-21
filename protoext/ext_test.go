@@ -2,11 +2,13 @@ package protoext_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 	"github.com/json-iterator/go/protoext"
@@ -15,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -668,22 +671,44 @@ func TestCaseNull(t *testing.T) {
 	m := &testv1.CaseValue{
 		// V: structpb.NewBoolValue(false),
 		// Strs: strs,
-		Nus: []structpb.NullValue{structpb.NullValue_NULL_VALUE, structpb.NullValue_NULL_VALUE},
-		Vs: []*structpb.Value{
-			structpb.NewNullValue(),
-			// nil,
-			// structpb.NewBoolValue(false),
-			&structpb.Value{
-				Kind: &structpb.Value_StructValue{}, // protojson marshal一个 nil struct value 为 {}
-			},
-			// &structpb.Value{
-			// 	Kind: (*structpb.Value_StructValue)(nil), // protojson marshal一个 nil struct value 为 {}
-			// },
-		},
+		// Nus: []structpb.NullValue{structpb.NullValue_NULL_VALUE, structpb.NullValue_NULL_VALUE},
+		// Vs: []*structpb.Value{
+		// 	structpb.NewNullValue(),
+		// 	// nil,
+		// 	// structpb.NewBoolValue(false),
+		// 	&structpb.Value{
+		// 		Kind: &structpb.Value_StructValue{}, // protojson marshal一个 nil struct value 为 {}
+		// 	},
+		// 	// &structpb.Value{
+		// 	// 	Kind: (*structpb.Value_StructValue)(nil), // protojson marshal一个 nil struct value 为 {}
+		// 	// },
+		// },
 	}
 	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
 	// a, _ := anypb.New(&testv1.Message{Id: "idA"})
-	// m.A = a
+	// TODO: 因为包含了 map ，结合 any.Any 使用的话，会影响到 proto.Equal 的判断
+	// s, _ := structpb.NewStruct(map[string]interface{}{
+	// 	"keyA": "valueA",
+	// 	"keyB": nil,
+	// 	"keyC": "valueC",
+	// })
+	// a, _ := anypb.New(s)
+	lv, _ := structpb.NewList([]interface{}{
+		nil,
+		true,
+		-1,
+		1.5,
+		"str",
+		[]byte(nil),
+		map[string]interface{}{
+			"b": false,
+		},
+		[]interface{}{
+			1, 2, 3, nil,
+		},
+	})
+	a, _ := anypb.New(lv)
+	m.A = a
 
 	var jsn string
 	var err error
@@ -698,4 +723,24 @@ func TestCaseNull(t *testing.T) {
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
 	log.Println(string(jsn))
+
+	bb, err := cfg.MarshalIndent(m, "", "    ")
+	assert.Nil(t, err)
+	log.Println(string(bb))
+
+	m2 := proto.Clone(m)
+	err = cfg.UnmarshalFromString(jsn, m2)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(m, m2))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.A.Value))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).A.Value))
+	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
+
+	m2 = proto.Clone(m)
+	err = pUnmarshalFromString(jsn, m2)
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(m, m2))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.A.Value))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).A.Value))
+	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
 }

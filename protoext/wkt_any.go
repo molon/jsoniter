@@ -79,7 +79,6 @@ func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	subIter.ReadObjectCB(func(iter *jsoniter.Iterator, field string) bool {
 		stream.WriteMore()
 		stream.WriteObjectField(field)
-		// TODO: indent?
 		stream.Write(iter.SkipAndReturnBytes())
 		return true
 	})
@@ -90,10 +89,76 @@ func (c *wktAnyEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return false // this is for elem type , so does not need this
 }
 
+type wktAnyDecoder struct {
+	ext *ProtoExtension
+}
+
+func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	var typeUrl string
+	var valueBytes []byte
+
+	subStream := iter.API().BorrowStream(nil)
+	defer iter.API().ReturnStream(subStream)
+	subStream.WriteObjectStart()
+	iter.ReadMapCB(func(iter *jsoniter.Iterator, field string) bool {
+		if field == "@type" {
+			typeUrl = iter.ReadString()
+			return true
+		}
+		value := iter.SkipAndReturnBytes()
+		if field == "value" {
+			valueBytes = value
+		}
+		subStream.WriteObjectField(field)
+		subStream.Write(value)
+		return true
+	})
+	subStream.WriteObjectEnd()
+
+	resolver := c.ext.GetResolver()
+	emt, err := resolver.FindMessageByURL(typeUrl)
+	if err != nil {
+		iter.ReportError("protobuf", fmt.Sprintf("%s: unable to resolve %q: %v", Any_message_fullname, typeUrl, err))
+		return
+	}
+	em := emt.New().Interface()
+
+	typ := reflect2.TypeOf(em)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.(reflect2.PtrType).Elem()
+	}
+	var subIter *jsoniter.Iterator
+	if IsWellKnownType(typ) {
+		subIter = iter.API().BorrowIterator(valueBytes)
+	} else {
+		subIter = iter.API().BorrowIterator(subStream.Buffer())
+	}
+	defer iter.API().ReturnIterator(subIter)
+	subIter.ReadVal(em)
+	if subIter.Error != nil && subIter.Error != io.EOF {
+		iter.ReportError("protobuf", fmt.Sprintf("%s: unable to unmarshal %q: %v", Any_message_fullname, typeUrl, subIter.Error))
+		return
+	}
+
+	b, err := proto.MarshalOptions{
+		AllowPartial:  true, // No need to check required fields inside an Any.
+		Deterministic: true,
+	}.Marshal(em)
+	if err != nil {
+		iter.ReportError("protobuf", fmt.Sprintf("error in marshaling Any.value field: %v", err))
+		return
+	}
+
+	m := ((*anypb.Any)(ptr))
+	m.TypeUrl = typeUrl
+	m.Value = b
+}
+
 var wktAnyCodec = &ProtoCodec{
 	EncoderCreator: func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValEncoder {
 		return WrapElemEncoder(typ, &wktAnyEncoder{ext: e}, nil)
 	},
-	// TODO: 暂时借用
-	DecoderCreator: ProtojsonDecoderCreator,
+	DecoderCreator: func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValDecoder {
+		return WrapElemDecoder(typ, &wktAnyDecoder{ext: e}, nil)
+	},
 }
