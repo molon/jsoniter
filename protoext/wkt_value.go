@@ -68,9 +68,9 @@ func marshalWktValue(x *structpb.Value, stream *jsoniter.Stream) error {
 			return nil
 		}
 	}
-	// TODO: 如果是在一个数组里不应该出现nil啊？咋办
-	stream.WriteNil()
-	return nil
+	// https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
+	// A producer of value is expected to set one of that variants, absence of any variant indicates an error.
+	return errors.New("none of the oneof fields is set")
 }
 
 func unmarshalWktValue(x *structpb.Value, iter *jsoniter.Iterator) error {

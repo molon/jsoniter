@@ -620,6 +620,9 @@ func TestCaseNull(t *testing.T) {
 			&structpb.Value{
 				Kind: &structpb.Value_StructValue{}, // protojson marshal一个 nil struct value 为 {}
 			},
+			// &structpb.Value{
+			// 	Kind: (*structpb.Value_StructValue)(nil), // protojson marshal一个 nil struct value 为 {}
+			// },
 		},
 	}
 	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
@@ -629,7 +632,7 @@ func TestCaseNull(t *testing.T) {
 	var jsn string
 	var err error
 
-	jsn, err = pMarshalToString((*structpb.Struct)(nil))
+	jsn, err = pMarshalToString(m)
 	assert.Nil(t, err)
 	log.Println(string(jsn))
 
