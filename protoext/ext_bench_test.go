@@ -49,7 +49,6 @@ func BenchmarkRead(b *testing.B) {
 		var all testv1.All
 		f.Fuzz(&all)
 		buffer, _ := protojson.Marshal(&all)
-		// TODO: slow if use this, dont know why now
 		// buffer, _ := cfg.Marshal(&all)
 		buffers = append(buffers, buffer)
 	}

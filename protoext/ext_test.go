@@ -743,4 +743,6 @@ func TestCaseNull(t *testing.T) {
 	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.A.Value))
 	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).A.Value))
 	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
+
+	// TODO: need try unmarshal empty any
 }

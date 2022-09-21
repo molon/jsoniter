@@ -94,8 +94,11 @@ type wktAnyDecoder struct {
 }
 
 func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+	m := ((*anypb.Any)(ptr))
+
 	var typeUrl string
 	var valueBytes []byte
+	numField := 0
 
 	subStream := iter.API().BorrowStream(nil)
 	defer iter.API().ReturnStream(subStream)
@@ -111,9 +114,21 @@ func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		}
 		subStream.WriteObjectField(field)
 		subStream.Write(value)
+		numField++
 		return true
 	})
 	subStream.WriteObjectEnd()
+
+	if typeUrl == "" {
+		if numField > 0 {
+			iter.ReportError("protobuf", fmt.Sprintf(`%s: missing "@type" field`, Any_message_fullname))
+			return
+		}
+		// empty any object
+		m.TypeUrl = typeUrl
+		m.Value = nil
+		return
+	}
 
 	resolver := c.ext.GetResolver()
 	emt, err := resolver.FindMessageByURL(typeUrl)
@@ -149,7 +164,6 @@ func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		return
 	}
 
-	m := ((*anypb.Any)(ptr))
 	m.TypeUrl = typeUrl
 	m.Value = b
 }
