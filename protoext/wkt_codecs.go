@@ -130,8 +130,10 @@ var WktProtoCodecs = map[reflect2.Type]*ProtoCodec{
 		}),
 
 	// Because the following three implement json.Marshaler/Unmarshaler, we must also set the codec of its pointer type to override
-	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():    NewProtojsonCodec(),
-	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem(): NewProtojsonCodec(),
+	reflect2.TypeOfPtr((*structpb.Struct)(nil)).Elem():    wktStructCodec,
+	reflect2.TypeOfPtr((*structpb.Struct)(nil)):           wktStructCodec,
+	reflect2.TypeOfPtr((*structpb.ListValue)(nil)).Elem(): wktListValueCodec,
+	reflect2.TypeOfPtr((*structpb.ListValue)(nil)):        wktListValueCodec,
 	reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem():     wktValueCodec,
 	reflect2.TypeOfPtr((*structpb.Value)(nil)):            wktValueCodec,
 

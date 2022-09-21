@@ -18,6 +18,8 @@ func decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEnco
 	// - marshal nil map to {}
 	// - marshal (*structpb.Struct)(nil) to {}
 	// - marshal (*structpb.ListValue)(nil) to []
+
+	// TODO: ListValue.Values 和 Struct.Fields 也需要判断？
 	isList := typ.Kind() == reflect.Slice || (typ == reflect2.TypeOfPtr((*structpb.ListValue)(nil)))
 	isLikeMap := typ.Kind() == reflect.Map || (typ == reflect2.TypeOfPtr((*structpb.Struct)(nil)))
 	if isList || isLikeMap {

@@ -8,24 +8,24 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-var wktStructCodec = (&ProtoCodec{}).
+var wktListValueCodec = (&ProtoCodec{}).
 	SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-		x := ((*structpb.Struct)(ptr))
-		stream.WriteVal(x.Fields)
+		x := ((*structpb.ListValue)(ptr))
+		stream.WriteVal(x.Values)
 	}).
 	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-		x := ((*structpb.Struct)(ptr))
+		x := ((*structpb.ListValue)(ptr))
 
-		fields := map[string]*structpb.Value{}
-		iter.ReadMapCB(func(iter *jsoniter.Iterator, field string) bool {
+		values := []*structpb.Value{}
+		iter.ReadArrayCB(func(iter *jsoniter.Iterator) bool {
 			v := &structpb.Value{}
 			iter.ReadVal(v)
 			if iter.Error != nil && iter.Error != io.EOF {
 				return false
 			}
-			fields[field] = v
+			values = append(values, v)
 			return true
 		})
 
-		x.Fields = fields
+		x.Values = values
 	})
