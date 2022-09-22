@@ -18,6 +18,7 @@ func FuzzMessage(x *v1.Message, f gofuzz.Continue) {
 // FuzzCaseValue is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzCaseValue(x *v1.CaseValue, f gofuzz.Continue) {
+	f.Fuzz(&x.V)
 	f.Fuzz(&x.A)
 }
 
@@ -205,6 +206,7 @@ func FuzzOptionalWKTs(x *v1.OptionalWKTs, f gofuzz.Continue) {
 // FuzzOneOf is a fuzz function.
 // If can be registered using `Fuzzer.Funcs` function.
 func FuzzOneOf(x *v1.OneOf, f gofuzz.Continue) {
+	f.Fuzz(&x.Extra)
 	switch f.Int31n(18) {
 	case 0:
 		var o v1.OneOf_E

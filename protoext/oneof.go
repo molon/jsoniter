@@ -20,6 +20,9 @@ func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDes
 	if !reflect2.PtrTo(c.Type).Implements(protoMessageType) {
 		return
 	}
+	if c.Type == wktValueType {
+		return
+	}
 
 	newBindings := make([]*jsoniter.Binding, 0, len(c.Bindings))
 	defer func() {

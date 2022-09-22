@@ -25,13 +25,14 @@ var wktTimestampCodec = (&ProtoCodec{}).
 			return
 		}
 		stream.WriteString(s)
-	}).SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-	s := iter.ReadString()
-	if err := unmarshalWktTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
-		iter.ReportError("protobuf", err.Error())
-		return
-	}
-})
+	}).
+	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+		s := iter.ReadString()
+		if err := unmarshalWktTimestamp(s, (*timestamppb.Timestamp)(ptr)); err != nil {
+			iter.ReportError("protobuf", err.Error())
+			return
+		}
+	})
 
 func marshalWktTimestamp(m *timestamppb.Timestamp) (string, error) {
 	secs := m.Seconds

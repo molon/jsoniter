@@ -34,6 +34,10 @@ func init() {
 	timeCase = timeCase.UTC()
 }
 
+func ProtoEqual(m, m2 proto.Message) bool {
+	return cmp.Diff(m, m2, protocmp.Transform()) == ""
+}
+
 func pMarshalToStringWithOpts(opts protojson.MarshalOptions, m proto.Message) (string, error) {
 	by, err := opts.Marshal(m)
 	if err != nil {
@@ -74,12 +78,12 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 	m2 := proto.Clone(m)
 	err = cfg.UnmarshalFromString(jsnA, m2)
 	assert.Nil(t, err)
-	// TIPS: If you have operated on m, such as `Clone` `protojson.Marshal`, etc., you must use proto.Equal to check equality
-	assert.True(t, proto.Equal(m, m2))
+	// TIPS: If you have operated on m, such as `Clone` `protojson.Marshal`, etc., you must use ProtoEqual to check equality
+	assert.True(t, ProtoEqual(m, m2))
 
 	err = pUnmarshalFromString(jsnA, m2)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
+	assert.True(t, ProtoEqual(m, m2))
 
 	jsnA, err = pMarshalToStringWithOpts(*opts, m2)
 	assert.Nil(t, err)
@@ -87,9 +91,6 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 }
 
 func TestJsonName(t *testing.T) {
-	var err error
-	var jsnA, jsnB string
-	m2 := &testv1.All{}
 	m := &testv1.All{
 		SnakeCase:      "snakeCase✅",
 		LowerCamelCase: "lowerCamelCase✅",
@@ -98,19 +99,13 @@ func TestJsonName(t *testing.T) {
 
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	jsnA, err = cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	jsnB, err = pMarshalToString(m)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
+	commonCheck(t, cfg, nil, m)
 
-	m2.Reset()
-	err = cfg.UnmarshalFromString(jsnA, m2)
-	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
+	var err error
+	var jsnA, jsnB string
+	m2 := &testv1.All{}
 
 	// fuzze decode
-	m2.Reset()
 	err = cfg.UnmarshalFromString(`{"snake_case":"snakeCase✅"}`, m2)
 	assert.Nil(t, err)
 	assert.Equal(t, "snakeCase✅", m2.SnakeCase)
@@ -129,7 +124,7 @@ func TestJsonName(t *testing.T) {
 	m2.Reset()
 	err = cfg.UnmarshalFromString(jsnA, m2)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
+	assert.True(t, ProtoEqual(m, m2))
 
 	// fuzze decode
 	m2.Reset()
@@ -273,7 +268,7 @@ func TestNullValueEnum(t *testing.T) {
 	err = cfg.UnmarshalFromString(jsnA, m2)
 	assert.Nil(t, err)
 	assert.Equal(t, structpb.NullValue_NULL_VALUE, *(m2.OptWkt.Nu))
-	assert.True(t, proto.Equal(m, m2))
+	assert.True(t, ProtoEqual(m, m2))
 }
 
 func TestEnum(t *testing.T) {
@@ -302,7 +297,7 @@ func TestEnum(t *testing.T) {
 	m2.Reset()
 	err = cfg.UnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
+	assert.True(t, ProtoEqual(m, m2))
 
 	// test fuzzy decode enum
 	m2.Reset()
@@ -425,7 +420,7 @@ func TestInteger64AsString(t *testing.T) {
 	m2 := &testv1.All{}
 	err = pUnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
+	assert.True(t, ProtoEqual(m, m2))
 
 	// test map keys with 64bit
 	mm := struct {
@@ -450,85 +445,77 @@ func TestOneof(t *testing.T) {
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
-	var err error
-	var jsnA, jsnB string
-	m2 := &testv1.All{}
 	m := &testv1.All{}
-
 	m.OF = &testv1.OneOf{
-		// OneOf: &testv1.OneOf_STr{
-		// 	STr: "strOfOneof",
-		// },
 		OneOf: &testv1.OneOf_Bl{
 			Bl: false,
 		},
 	}
-	jsnA, err = cfg.MarshalToString(m)
+	commonCheck(t, cfg, nil, m)
+	m.OF.OneOf = &testv1.OneOf_STr{
+		STr: "strOfOneof",
+	}
+	commonCheck(t, cfg, nil, m)
+
+	// embedded test
+	type InnerMM struct {
+		*testv1.OneOf
+		Name string  `json:"name"`
+		F32  float32 `json:"f32"`
+	}
+	type MM struct {
+		*InnerMM
+		Age int   `json:"age"`
+		I32 int32 `json:"i32,omitempty"` // test override
+	}
+	i32 := &testv1.OneOf_I32{
+		I32: 100,
+	}
+	em := &MM{
+		InnerMM: &InnerMM{
+			OneOf: &testv1.OneOf{
+				OneOf: i32,
+			},
+			Name: "nameA",
+		},
+		Age: 21,
+	}
+	jsn, err := cfg.MarshalToString(em.OneOf)
 	assert.Nil(t, err)
-	jsnB, err = pMarshalToString(m)
+	assert.Equal(t, `{"i32":100}`, jsn)
+	jsn, err = cfg.MarshalToString(em.InnerMM)
 	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
-
-	m2.Reset()
-	err = cfg.UnmarshalFromString(jsnA, m2)
+	assert.Equal(t, `{"i32":100,"name":"nameA","f32":0}`, jsn)
+	jsn, err = cfg.MarshalToString(em)
 	assert.Nil(t, err)
-	// TODO: 考虑内部不使用 reflect 方法去设置
-	assert.True(t, proto.Equal(m, m2))
+	assert.Equal(t, `{"name":"nameA","f32":0,"age":21}`, jsn)
+	em.I32 = 300
+	jsn, err = cfg.MarshalToString(em)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"name":"nameA","f32":0,"age":21,"i32":300}`, jsn)
 
-	// 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-	// 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUn})
+	err = cfg.UnmarshalFromString(`{"age":22}`, em)
+	assert.Nil(t, err)
+	assert.Equal(t, 22, em.Age)
+	err = cfg.UnmarshalFromString(`{"f32":320}`, em)
+	assert.Nil(t, err)
+	assert.Equal(t, float32(320), em.F32)
+	err = cfg.UnmarshalFromString(`{"extra":"extraS","i32":123}`, em)
+	assert.Nil(t, err)
+	assert.Equal(t, 22, em.Age)
+	assert.Equal(t, float32(320), em.F32)
+	assert.Equal(t, int32(123), em.I32)
+	assert.Equal(t, "extraS", em.OneOf.Extra)
+	assert.Equal(t, int32(100), em.OneOf.GetI32())
+	err = cfg.UnmarshalFromString(`{"extra":"extraS2","i32":223}`, em.InnerMM)
+	assert.Nil(t, err)
+	assert.Equal(t, "extraS2", em.OneOf.Extra)
+	assert.Equal(t, int32(223), em.OneOf.GetI32())
 
-	// 	fakeOneOfStr := "fakeOneOf"
-
-	// 	type MM struct {
-	// 		*testv1.OneOf
-	// 		OneOf_  string  `json:"oneOf_,omitempty"`
-	// 		OneOf_y string  `json:"oneOf_Y,omitempty"`
-	// 		F32     float32 `json:"f32"`
-	// 	}
-
-	// 	i32 := &testv1.OneOf_I32{
-	// 		I32: 3,
-	// 	}
-	// 	m := &MM{
-	// 		OneOf: &testv1.OneOf{
-	// 			OneOf:  &fakeOneOfStr,
-	// 			OneOf_: i32,
-	// 		},
-	// 		OneOf_: "OutOneOf_x",
-	// 	}
-	// 	// m.OneOf.OneOf_
-
-	// 	// log.Printf("%p %p", &m.OneOf.OneOf_, i32)
-	// 	// log.Printf("%v", m.OneOf_)
-	// 	// log.Printf("%v", m.OneOf)
-
-	// 	jsn, err := cfg.MarshalToString(m)
-	// 	assert.Nil(t, err)
-	// 	assert.Equal(t, `{"OneOf":"fakeOneOf","i32":3,"oneOf_":"OutOneOf_x","f32":0}`, jsn)
-
-	// 	// m = &MM{}
-	// 	// err = cfg.UnmarshalFromString(`{"OneOf":"fakeOneOf","i32":3,"oneOf_":"OutOneOf_x","f32":0.5}`, m)
-	// 	// assert.Nil(t, err)
-	// 	// log.Printf("%+v", m.OneOf)
-	// 	m = &MM{}
-	// 	// TODO: 需要测试本来not nil，然后 unmarshal 成nil
-	// 	err = cfg.UnmarshalFromString(`{"OneOf":"fakeOneOf","i32":3,"oneOf_":"OutOneOf_x","f32":0.5}`, m)
-	// 	assert.Nil(t, err)
-	// 	log.Printf("%#v", m.OneOf)
-
-	// 	err = cfg.UnmarshalFromString(`{"OneOf":"fakeOneOf","i32":3,"oneOf_":"OutOneOf_x","f32":0.5}`, m)
-	// 	assert.Nil(t, err)
-	// 	log.Printf("%#v", m.OneOf)
-
-	// 	// jsn, err = cfg.MarshalToString(m)
-	// 	// assert.Nil(t, err)
-	// 	// assert.Equal(t, `{"OneOf":"fakeOneOf","i32":3,"oneOf_":"OutOneOf_x","f32":0}`, jsn)
-
-	// // jsn, err = pMarshalToString(m)
-	// // assert.Nil(t, err)
-	// // // protojson will only handle internal of testv1.OneOf
-	// // assert.Equal(t, `{"OneOf":"fakeOneOf","i32":3}`, jsn)
+	// special wkt
+	jsn, err = cfg.MarshalToString(structpb.NewStringValue("structpb.StrValue"))
+	assert.Nil(t, err)
+	assert.Equal(t, `"structpb.StrValue"`, jsn)
 }
 
 func TestNilValues(t *testing.T) {
@@ -669,7 +656,7 @@ func TestCaseNull(t *testing.T) {
 	// }
 
 	m := &testv1.CaseValue{
-		// V: structpb.NewBoolValue(false),
+		V: structpb.NewBoolValue(false),
 		// Strs: strs,
 		// Nus: []structpb.NullValue{structpb.NullValue_NULL_VALUE, structpb.NullValue_NULL_VALUE},
 		// Vs: []*structpb.Value{
@@ -686,29 +673,29 @@ func TestCaseNull(t *testing.T) {
 	}
 	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
 	// a, _ := anypb.New(&testv1.Message{Id: "idA"})
-	// TODO: 因为包含了 map ，结合 any.Any 使用的话，会影响到 proto.Equal 的判断
+	// TODO: 因为包含了 map ，结合 any.Any 使用的话，会影响到 ProtoEqual 的判断
 	// s, _ := structpb.NewStruct(map[string]interface{}{
 	// 	"keyA": "valueA",
 	// 	"keyB": nil,
 	// 	"keyC": "valueC",
 	// })
 	// a, _ := anypb.New(s)
-	lv, _ := structpb.NewList([]interface{}{
-		nil,
-		true,
-		-1,
-		1.5,
-		"str",
-		[]byte(nil),
-		map[string]interface{}{
-			"b": false,
-		},
-		[]interface{}{
-			1, 2, 3, nil,
-		},
-	})
-	a, _ := anypb.New(lv)
-	m.A = a
+	// lv, _ := structpb.NewList([]interface{}{
+	// 	nil,
+	// 	true,
+	// 	-1,
+	// 	1.5,
+	// 	"str",
+	// 	[]byte(nil),
+	// 	map[string]interface{}{
+	// 		"b": false,
+	// 	},
+	// 	[]interface{}{
+	// 		1, 2, 3, nil,
+	// 	},
+	// })
+	// a, _ := anypb.New(lv)
+	// m.A = a
 
 	var jsn string
 	var err error
@@ -731,18 +718,20 @@ func TestCaseNull(t *testing.T) {
 	m2 := proto.Clone(m)
 	err = cfg.UnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
-	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.A.Value))
-	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).A.Value))
+	assert.True(t, ProtoEqual(m, m2))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.GetA().GetValue()))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).GetA().GetValue()))
 	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
 
 	m2 = proto.Clone(m)
 	err = pUnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(m, m2))
-	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.A.Value))
-	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).A.Value))
+	assert.True(t, ProtoEqual(m, m2))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.GetA().GetValue()))
+	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).GetA().GetValue()))
 	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
 
+	log.Println("----")
+	cfg.MarshalToString(structpb.NewBoolValue(false))
 	// TODO: need try unmarshal empty any
 }

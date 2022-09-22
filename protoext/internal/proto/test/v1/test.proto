@@ -16,7 +16,7 @@ message Message {
 }
 
 message CaseValue {
-  // google.protobuf.Value v = 1;
+  google.protobuf.Value v = 1;
   // google.protobuf.Struct s = 2;
   // google.protobuf.ListValue l = 3;
   google.protobuf.Any a = 4;
@@ -196,6 +196,7 @@ message OptionalWKTs {
 
 
 message OneOf {
+  string extra = 1;
   oneof one_of {
     JsonEnum e = 2;
     string s_tr = 3;

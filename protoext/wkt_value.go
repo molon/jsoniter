@@ -7,9 +7,12 @@ import (
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+var wktValueType = reflect2.TypeOfPtr((*structpb.Value)(nil)).Elem()
 
 const (
 	Value_message_fullname           protoreflect.FullName = "google.protobuf.Value"
