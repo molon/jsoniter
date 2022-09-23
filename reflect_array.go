@@ -49,7 +49,6 @@ func encoderOfArray(ctx *ctx, typ reflect2.Type) ValEncoder {
 	}
 	updateArrayEncoderConstructor(c, extensions...)
 	updateArrayEncoderConstructor(c, ctx.encoderExtension)
-	updateArrayEncoderConstructor(c, ctx.decoderExtension)
 	updateArrayEncoderConstructor(c, ctx.extraExtensions...)
 	enc := &arrayEncoder{arrayType, c.ElemEncoder}
 	return c.DecorateFunc(enc)

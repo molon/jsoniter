@@ -672,22 +672,6 @@ func TestNilValues(t *testing.T) {
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	mOpts := &protojson.MarshalOptions{EmitUnpopulated: true}
 
-	// TODO: protojson 会将root proto信息 zero 解析，我们貌似不太好兼容这个机制
-	jsn, err := pMarshalToStringWithOpts(*mOpts, (*wrapperspb.Int32Value)(nil))
-	log.Printf("%v", jsn)
-	jsn, err = cfg.MarshalToString((*wrapperspb.Int32Value)(nil))
-	log.Printf("%v", jsn)
-
-	jsn, err = pMarshalToStringWithOpts(*mOpts, (*testv1.Message)(nil))
-	log.Printf("%v", jsn)
-	jsn, err = cfg.MarshalToString((*testv1.Message)(nil))
-	log.Printf("%v", jsn)
-
-	jsn, err = pMarshalToStringWithOpts(*mOpts, (*structpb.Value)(nil))
-	log.Printf("%v", jsn)
-	jsn, err = cfg.MarshalToString((*structpb.Value)(nil))
-	log.Printf("%v", jsn)
-
 	i32 := int32(-123)
 	m := &testv1.Case{
 		WktI32A:    nil,
@@ -879,5 +863,4 @@ func TestCaseNull(t *testing.T) {
 
 	log.Println("----")
 	cfg.MarshalToString(structpb.NewBoolValue(false))
-	// TODO: need try unmarshal empty any
 }

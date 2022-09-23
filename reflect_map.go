@@ -58,7 +58,6 @@ func encoderOfMap(ctx *ctx, typ reflect2.Type) ValEncoder {
 	}
 	updateMapEncoderConstructor(c, extensions...)
 	updateMapEncoderConstructor(c, ctx.encoderExtension)
-	updateMapEncoderConstructor(c, ctx.decoderExtension)
 	updateMapEncoderConstructor(c, ctx.extraExtensions...)
 
 	var enc ValEncoder

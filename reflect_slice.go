@@ -45,7 +45,6 @@ func encoderOfSlice(ctx *ctx, typ reflect2.Type) ValEncoder {
 	}
 	updateSliceEncoderConstructor(c, extensions...)
 	updateSliceEncoderConstructor(c, ctx.encoderExtension)
-	updateSliceEncoderConstructor(c, ctx.decoderExtension)
 	updateSliceEncoderConstructor(c, ctx.extraExtensions...)
 	enc := &sliceEncoder{sliceType, c.ElemEncoder}
 	return c.DecorateFunc(enc)
