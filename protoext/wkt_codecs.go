@@ -1,10 +1,7 @@
 package protoext
 
 import (
-	"encoding/base64"
-	"fmt"
 	"reflect"
-	"strings"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -54,83 +51,66 @@ var WktProtoCodecs = map[reflect2.Type]*ProtoCodec{
 
 	reflect2.TypeOfPtr((*wrapperspb.BoolValue)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteBool(((*wrapperspb.BoolValue)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.BoolValue)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.BoolValue)(ptr).Value = iter.ReadBool()
+			iter.ReadVal(&((*wrapperspb.BoolValue)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.Int32Value)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteInt32(((*wrapperspb.Int32Value)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.Int32Value)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.Int32Value)(ptr).Value = iter.ReadInt32()
+			iter.ReadVal(&((*wrapperspb.Int32Value)(ptr).Value))
 		}),
-	// "NaN" "Infinity" "-Infinity" handle??? // TODO:
 	reflect2.TypeOfPtr((*wrapperspb.Int64Value)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteInt64(((*wrapperspb.Int64Value)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.Int64Value)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.Int64Value)(ptr).Value = iter.ReadInt64()
+			iter.ReadVal(&((*wrapperspb.Int64Value)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.UInt32Value)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteUint32(((*wrapperspb.UInt32Value)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.UInt32Value)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.UInt32Value)(ptr).Value = iter.ReadUint32()
+			iter.ReadVal(&((*wrapperspb.UInt32Value)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.UInt64Value)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteUint64(((*wrapperspb.UInt64Value)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.UInt64Value)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.UInt64Value)(ptr).Value = iter.ReadUint64()
+			iter.ReadVal(&((*wrapperspb.UInt64Value)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.FloatValue)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteFloat32(((*wrapperspb.FloatValue)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.FloatValue)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.FloatValue)(ptr).Value = iter.ReadFloat32()
+			iter.ReadVal(&((*wrapperspb.FloatValue)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.DoubleValue)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			// TODO: stream.WriteFloat64Lossy ???
-			stream.WriteFloat64(((*wrapperspb.DoubleValue)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.DoubleValue)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.DoubleValue)(ptr).Value = iter.ReadFloat64()
+			iter.ReadVal(&((*wrapperspb.DoubleValue)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.StringValue)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteString(((*wrapperspb.StringValue)(ptr)).GetValue())
+			stream.WriteVal(((*wrapperspb.StringValue)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			(*wrapperspb.StringValue)(ptr).Value = iter.ReadString()
+			iter.ReadVal(&((*wrapperspb.StringValue)(ptr).Value))
 		}),
 	reflect2.TypeOfPtr((*wrapperspb.BytesValue)(nil)).Elem(): (&ProtoCodec{}).
 		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteString(
-				base64.StdEncoding.EncodeToString(((*wrapperspb.BytesValue)(ptr)).GetValue()),
-			)
+			stream.WriteVal(((*wrapperspb.BytesValue)(ptr)).GetValue())
 		}).
 		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			s := iter.ReadString()
-			enc := base64.StdEncoding
-			if strings.ContainsAny(s, "-_") {
-				enc = base64.URLEncoding
-			}
-			if len(s)%4 != 0 {
-				enc = enc.WithPadding(base64.NoPadding)
-			}
-			b, err := enc.DecodeString(s)
-			if err != nil {
-				iter.ReportError("protobuf", fmt.Sprintf("google.protobuf.BytesValue: %v", err))
-				return
-			}
-			(*wrapperspb.BytesValue)(ptr).Value = b
+			iter.ReadVal(&((*wrapperspb.BytesValue)(ptr).Value))
 		}),
 
 	// Because the following three implement json.Marshaler/Unmarshaler, we must also set the codec of its pointer type to override

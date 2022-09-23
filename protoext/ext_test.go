@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"log"
+	"math"
 	"testing"
 	"time"
 
@@ -35,6 +36,8 @@ func init() {
 }
 
 func ProtoEqual(m, m2 proto.Message) bool {
+	// proto.Equal cant handle any.Any which contains map
+	// https://github.com/golang/protobuf/issues/455
 	return cmp.Diff(m, m2, protocmp.Transform()) == ""
 }
 
@@ -60,7 +63,7 @@ func pUnmarshalFromString(s string, m proto.Message) error {
 	return protojson.Unmarshal([]byte(s), m)
 }
 
-func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions, m proto.Message) {
+func commonCheckMarshalEqual(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions, m proto.Message) (string, string) {
 	if opts == nil {
 		opts = &protojson.MarshalOptions{}
 	}
@@ -70,67 +73,153 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 
 	jsnA, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
-	// log.Printf("%v", jsnA)
 	jsnB, err = pMarshalToStringWithOpts(*opts, m)
 	assert.Nil(t, err)
 	assert.Equal(t, jsnA, jsnB)
+	// log.Println(jsnA)
+	return jsnA, jsnB
+}
+
+func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions, m proto.Message) {
+	jsnA, jsnB := commonCheckMarshalEqual(t, cfg, opts, m)
 
 	m2 := proto.Clone(m)
-	err = cfg.UnmarshalFromString(jsnA, m2)
+	err := cfg.UnmarshalFromString(jsnA, m2)
 	assert.Nil(t, err)
-	// TIPS: If you have operated on m, such as `Clone` `protojson.Marshal`, etc., you must use ProtoEqual to check equality
-	assert.True(t, ProtoEqual(m, m2))
+	// TIPS: If you have operated on m, such as `Clone` `protojson.Marshal`, etc., you cant use assert.Equal(t,m,m2) to check equality
+	assert.Equal(t, "", cmp.Diff(m, m2, protocmp.Transform()))
+	// assert.True(t, proto.Equal(m, m2))
 
-	err = pUnmarshalFromString(jsnA, m2)
+	m2 = proto.Clone(m)
+	err = pUnmarshalFromString(jsnB, m2)
 	assert.Nil(t, err)
-	assert.True(t, ProtoEqual(m, m2))
-
-	jsnA, err = pMarshalToStringWithOpts(*opts, m2)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
+	assert.Equal(t, "", cmp.Diff(m, m2, protocmp.Transform()))
 }
 
 func TestJsonName(t *testing.T) {
+	var err error
+	m2 := &testv1.All{}
 	m := &testv1.All{
 		SnakeCase:      "snakeCase✅",
 		LowerCamelCase: "lowerCamelCase✅",
 		UpwerCamelCase: "UpwerCamelCase✅",
 	}
 
+	// UseProtoNames: false
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	commonCheck(t, cfg, nil, m)
-
-	var err error
-	var jsnA, jsnB string
-	m2 := &testv1.All{}
-
-	// fuzze decode
+	// fuzzy decode
 	err = cfg.UnmarshalFromString(`{"snake_case":"snakeCase✅"}`, m2)
 	assert.Nil(t, err)
 	assert.Equal(t, "snakeCase✅", m2.SnakeCase)
 
 	// UseProtoNames: true
 	m.SnakeCase = "snake_case✅"
-
 	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{UseProtoNames: true})
-	jsnA, err = cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	jsnB, err = pMarshalToStringWithOpts(protojson.MarshalOptions{UseProtoNames: true}, m)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
-
-	m2.Reset()
-	err = cfg.UnmarshalFromString(jsnA, m2)
-	assert.Nil(t, err)
-	assert.True(t, ProtoEqual(m, m2))
-
-	// fuzze decode
+	commonCheck(t, cfg, &protojson.MarshalOptions{UseProtoNames: true}, m)
+	// fuzzy decode
 	m2.Reset()
 	err = cfg.UnmarshalFromString(`{"snakeCase":"snake_case✅"}`, m2)
 	assert.Nil(t, err)
 	assert.Equal(t, "snake_case✅", m2.SnakeCase)
+}
+
+func TestScalar(t *testing.T) {
+	var err error
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	// []byte decode???? // TODO:
+
+	// nan
+	nan := math.NaN()
+	m := &testv1.Singular{
+		I32:   int32(nan),
+		I64:   int64(nan),
+		U32:   uint32(nan),
+		U64:   uint64(nan),
+		Sfi64: int64(nan),
+		F32:   float32(nan),
+		F64:   float64(nan),
+	}
+	commonCheckMarshalEqual(t, cfg, nil, m)
+
+	// inf
+	inf := math.Inf(+1)
+	m = &testv1.Singular{
+		I32:   int32(inf),
+		I64:   int64(inf),
+		U32:   uint32(inf),
+		U64:   uint64(inf),
+		Sfi64: int64(inf),
+		F32:   float32(inf),
+		F64:   float64(inf),
+	}
+	commonCheck(t, cfg, nil, m)
+
+	inf = math.Inf(-1)
+	m = &testv1.Singular{
+		I32:   int32(inf),
+		I64:   int64(inf),
+		U32:   uint32(inf),
+		U64:   uint64(inf),
+		Sfi64: int64(inf),
+		F32:   float32(inf),
+		F64:   float64(inf),
+	}
+	commonCheck(t, cfg, nil, m)
+
+	// fuzzy decode float
+	m = &testv1.Singular{}
+	err = cfg.UnmarshalFromString(`{"f32":"123.1","f64":"234.5"}`, m)
+	assert.Nil(t, err)
+	assert.Equal(t, float32(123.1), m.F32)
+	assert.Equal(t, float64(234.5), m.F64)
+
+	// fuzzy decode all
+	m = &testv1.Singular{}
+	err = cfg.UnmarshalFromString(`{"e":"JSON_ENUM_SOME","s":100,"i32":"1","i64":2,"u32":"3","u64":4,"f32":"5","f64":"6","si32":"7","si64":8,"fi32":"9","fi64":10,"sfi32":"11","sfi64":12,"bl":"true"}`, m)
+	assert.Nil(t, err)
+	assert.True(t, ProtoEqual(&testv1.Singular{
+		E:     testv1.JsonEnum_JSON_ENUM_SOME,
+		S:     "100",
+		I32:   1,
+		I64:   2,
+		U32:   3,
+		U64:   4,
+		F32:   5,
+		F64:   6,
+		Si32:  7,
+		Si64:  8,
+		Fi32:  9,
+		Fi64:  10,
+		Sfi32: 11,
+		Sfi64: 12,
+		Bl:    true,
+	}, m))
+
+	// nan wkt
+	mm := &testv1.WKTs{
+		F32: wrapperspb.Float(float32(math.NaN())),
+		F64: wrapperspb.Double(math.NaN()),
+	}
+	commonCheckMarshalEqual(t, cfg, nil, mm)
+
+	// inf
+	mm = &testv1.WKTs{
+		F32: wrapperspb.Float(float32(math.Inf(+1))),
+		F64: wrapperspb.Double(math.Inf(-1)),
+	}
+	commonCheck(t, cfg, nil, mm)
+
+	// fuzzy decode float
+	mm = &testv1.WKTs{}
+	err = cfg.UnmarshalFromString(`{"f32":"123.1","f64":"234.5"}`, mm)
+	assert.Nil(t, err)
+	assert.Equal(t, float32(123.1), mm.F32.GetValue())
+	assert.Equal(t, float64(234.5), mm.F64.GetValue())
 }
 
 func TestEmitUnpopulated(t *testing.T) {
@@ -219,7 +308,7 @@ func TestWkt(t *testing.T) {
 
 	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
-	// because m is not proto.Message, if we want all emit empty, should register another extension
+	// because m is not proto.Message, if we want all emit empty instead with `EmitUnpopulated:true`, should register EmitEmptyExtension
 	cfg.RegisterExtension(&extra.EmitEmptyExtension{})
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
@@ -248,12 +337,12 @@ func TestNullValueEnum(t *testing.T) {
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	nu := structpb.NullValue_NULL_VALUE
-	// var err error
 	m := &testv1.All{
 		OptWkt: &testv1.OptionalWKTs{
 			Nu: &nu,
 		},
 	}
+	commonCheck(t, cfg, nil, m)
 
 	var err error
 	var jsnA, jsnB string
@@ -518,6 +607,54 @@ func TestOneof(t *testing.T) {
 	assert.Equal(t, `"structpb.StrValue"`, jsn)
 }
 
+func TestAny(t *testing.T) {
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	m := &testv1.All{
+		Wkt:    &testv1.WKTs{},
+		OptWkt: &testv1.OptionalWKTs{},
+		RWkt:   &testv1.RepeatedWKTs{},
+	}
+	commonCheck(t, cfg, nil, m)
+
+	m.Wkt.A, _ = anypb.New(wrapperspb.String("wrapStr"))
+	m.OptWkt.A = m.Wkt.A
+	m.RWkt.A = []*anypb.Any{m.Wkt.A}
+	commonCheck(t, cfg, nil, m)
+	m.Wkt.A, _ = anypb.New(&testv1.Message{Id: "idA"})
+	m.OptWkt.A = m.Wkt.A
+	m.RWkt.A = []*anypb.Any{m.Wkt.A}
+	commonCheck(t, cfg, nil, m)
+	s, _ := structpb.NewStruct(map[string]interface{}{
+		"keyA": "valueA",
+		"keyB": nil,
+		"keyC": "valueC",
+	})
+	m.Wkt.A, _ = anypb.New(s)
+	m.OptWkt.A = m.Wkt.A
+	m.RWkt.A = []*anypb.Any{m.Wkt.A}
+	commonCheck(t, cfg, nil, m)
+	lv, _ := structpb.NewList([]interface{}{
+		nil,
+		true,
+		-1,
+		1.5,
+		"str",
+		[]byte(nil),
+		map[string]interface{}{
+			"b": false,
+		},
+		[]interface{}{
+			1, 2, 3, nil,
+		},
+	})
+	m.Wkt.A, _ = anypb.New(lv)
+	m.OptWkt.A = m.Wkt.A
+	m.RWkt.A = []*anypb.Any{m.Wkt.A}
+	commonCheck(t, cfg, nil, m)
+}
+
 func TestNilValues(t *testing.T) {
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
@@ -596,11 +733,9 @@ func TestNilValues(t *testing.T) {
 			"enumB": testv1.JsonEnum_JSON_ENUM_UNSPECIFIED,
 		},
 		MapWktU64: map[uint64]*wrapperspb.UInt64Value{
-			// TODO: 这里 protojson sort map key 不是依循着字符串排序的
 			1: wrapperspb.UInt64(123),
 			2: wrapperspb.UInt64(223),
 			3: nil,
-			// 18081233737888512426: wrapperspb.UInt64(0),
 		},
 		WktV:  structpb.NewNullValue(),
 		WktLv: (*(structpb.ListValue))(nil),
@@ -627,13 +762,19 @@ func TestNilValues(t *testing.T) {
 	m.RptWktS = []*structpb.Struct{s, (*structpb.Struct)(nil)}
 	m.RptWktLv = []*structpb.ListValue{nil, lv, nil}
 	commonCheck(t, cfg, mOpts, m)
-
-	// TODO: if root returns not null
-	// v := (*structpb.Struct)(nil)
-	// commonCheck(t, cfg, nil, v)
 }
 
 func TestCaseNull(t *testing.T) {
+	var jsn string
+	var err error
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
+
+	// var bs []byte
+	// err = cfg.UnmarshalFromString(`"MTIz"`, &bs)
+	// assert.Nil(t, err)
+	// log.Printf("%s", string(bs))
+
 	// a := "a"
 	// strs := []string{a, "b"}
 	// strsB := []*string{&a, nil}
@@ -673,7 +814,6 @@ func TestCaseNull(t *testing.T) {
 	}
 	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
 	// a, _ := anypb.New(&testv1.Message{Id: "idA"})
-	// TODO: 因为包含了 map ，结合 any.Any 使用的话，会影响到 ProtoEqual 的判断
 	// s, _ := structpb.NewStruct(map[string]interface{}{
 	// 	"keyA": "valueA",
 	// 	"keyB": nil,
@@ -697,15 +837,9 @@ func TestCaseNull(t *testing.T) {
 	// a, _ := anypb.New(lv)
 	// m.A = a
 
-	var jsn string
-	var err error
-
 	jsn, err = pMarshalToString(m)
 	assert.Nil(t, err)
 	log.Println(string(jsn))
-
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)

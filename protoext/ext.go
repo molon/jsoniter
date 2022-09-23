@@ -8,7 +8,6 @@ import (
 	"github.com/json-iterator/go/extra"
 	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/reflect/protoregistry"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type ProtoExtension struct {
@@ -57,11 +56,6 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 }
 
 // Handle 64BitInteger as string
-var wellKnown64BitIntegerTypes = map[reflect2.Type]bool{
-	reflect2.TypeOfPtr((*wrapperspb.Int64Value)(nil)).Elem():  true,
-	reflect2.TypeOfPtr((*wrapperspb.UInt64Value)(nil)).Elem(): true,
-}
-
 func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEncoder {
 	if e.Encode64BitAsInteger {
 		return nil
@@ -78,6 +72,10 @@ func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.Val
 		encoder = enc
 	}
 
+	if enc := decorateEncoderForScalar(typ, encoder); enc != nil {
+		encoder = enc
+	}
+
 	if e.Encode64BitAsInteger {
 		return encoder
 	}
@@ -85,8 +83,7 @@ func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.Val
 	// https://github.com/protocolbuffers/protobuf-go/blob/e62d8edb7570c986a51e541c161a0c93bbaf9253/encoding/protojson/encode.go#L274-L277
 	// https://github.com/protocolbuffers/protobuf-go/pull/14
 	// https://github.com/golang/protobuf/issues/1414
-	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 ||
-		wellKnown64BitIntegerTypes[typ] {
+	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
 		return &stringModeNumberEncoder{encoder}
 	}
 	return encoder
@@ -97,11 +94,10 @@ func (e *ProtoExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.Val
 		decoder = dec
 	}
 
-	// fuzzy decode, so we dont check Encode64BitAsInteger
-	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 ||
-		wellKnown64BitIntegerTypes[typ] {
-		return &stringModeNumberDecoder{decoder}
+	if dec := decorateDecoderForScalar(typ, decoder); dec != nil {
+		decoder = dec
 	}
+
 	return decoder
 }
 
