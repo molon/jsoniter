@@ -22,6 +22,16 @@ type wktAnyEncoder struct {
 
 func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	m := ((*anypb.Any)(ptr))
+
+	if m.GetTypeUrl() == "" {
+		if len(m.GetValue()) <= 0 {
+			stream.WriteEmptyObject()
+			return
+		}
+		stream.Error = fmt.Errorf(`%s: "type_url" is not set, but "value" is set.`, Any_message_fullname)
+		return
+	}
+
 	resolver := c.ext.GetResolver()
 
 	// Resolve the type in order to unmarshal value field.

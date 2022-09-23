@@ -617,6 +617,8 @@ func TestAny(t *testing.T) {
 		RWkt:   &testv1.RepeatedWKTs{},
 	}
 	commonCheck(t, cfg, nil, m)
+	m.Wkt.A = &anypb.Any{} // empty
+	commonCheck(t, cfg, nil, m)
 
 	m.Wkt.A, _ = anypb.New(wrapperspb.String("wrapStr"))
 	m.OptWkt.A = m.Wkt.A
@@ -653,6 +655,16 @@ func TestAny(t *testing.T) {
 	m.OptWkt.A = m.Wkt.A
 	m.RWkt.A = []*anypb.Any{m.Wkt.A}
 	commonCheck(t, cfg, nil, m)
+
+	// empty any
+	err := cfg.UnmarshalFromString(`{"wkt":{"a":{}}}`, m)
+	assert.Nil(t, err)
+	assert.Equal(t, "", m.Wkt.A.GetTypeUrl())
+	assert.Equal(t, 0, len(m.Wkt.A.GetValue()))
+
+	// miss type
+	err = cfg.UnmarshalFromString(`{"wkt":{"a":{"name":"s"}}}`, m)
+	assert.Contains(t, err.Error(), "google.protobuf.Any: missing \"@type\" field")
 }
 
 func TestNilValues(t *testing.T) {
