@@ -80,7 +80,7 @@ func commonCheckMarshalEqual(t *testing.T, cfg jsoniter.API, opts *protojson.Mar
 	return jsnA, jsnB
 }
 
-func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions, m proto.Message) {
+func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions, m proto.Message) (string, string) {
 	jsnA, jsnB := commonCheckMarshalEqual(t, cfg, opts, m)
 
 	m2 := proto.Clone(m)
@@ -94,6 +94,8 @@ func commonCheck(t *testing.T, cfg jsoniter.API, opts *protojson.MarshalOptions,
 	err = pUnmarshalFromString(jsnB, m2)
 	assert.Nil(t, err)
 	assert.Equal(t, "", cmp.Diff(m, m2, protocmp.Transform()))
+
+	return jsnA, jsnB
 }
 
 func TestJsonName(t *testing.T) {
@@ -332,32 +334,51 @@ func TestUnmarshalExistWkt(t *testing.T) {
 	assert.Equal(t, origP, reflect2.PtrOf(m.Wkt.D))
 }
 
-func TestNullValueEnum(t *testing.T) {
+func TestNullValue(t *testing.T) {
+	var jsn string
+	var err error
+	var ok bool
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	nu := structpb.NullValue_NULL_VALUE
 	m := &testv1.All{
+		OWkt: &testv1.OneOfWKT{
+			OneOf: &testv1.OneOfWKT_Nu{
+				Nu: structpb.NullValue_NULL_VALUE,
+			},
+		},
 		OptWkt: &testv1.OptionalWKTs{
 			Nu: &nu,
+			V:  structpb.NewNullValue(),
 		},
 	}
-	commonCheck(t, cfg, nil, m)
-
-	var err error
-	var jsnA, jsnB string
-
-	jsnA, err = cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	jsnB, err = pMarshalToString(m)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
-
+	jsn, _ = commonCheck(t, cfg, nil, m)
 	m2 := &testv1.All{}
-	err = cfg.UnmarshalFromString(jsnA, m2)
+	err = cfg.UnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
-	assert.Equal(t, structpb.NullValue_NULL_VALUE, *(m2.OptWkt.Nu))
 	assert.True(t, ProtoEqual(m, m2))
+	_, ok = m2.OptWkt.V.GetKind().(*structpb.Value_NullValue)
+	assert.True(t, ok)
+	assert.Equal(t, structpb.NullValue_NULL_VALUE, *(m2.OptWkt.Nu))
+	_, ok = m2.OWkt.GetOneOf().(*testv1.OneOfWKT_Nu)
+	assert.True(t, ok)
+
+	m.OWkt.OneOf = &testv1.OneOfWKT_V{
+		V: structpb.NewNullValue(),
+	}
+	jsn, _ = commonCheck(t, cfg, nil, m)
+	m2 = &testv1.All{}
+	err = cfg.UnmarshalFromString(jsn, m2)
+	assert.Nil(t, err)
+	assert.True(t, ProtoEqual(m, m2))
+	_, ok = m2.OptWkt.V.GetKind().(*structpb.Value_NullValue)
+	assert.True(t, ok)
+	assert.Equal(t, structpb.NullValue_NULL_VALUE, *(m2.OptWkt.Nu))
+	wktV, ok := m2.OWkt.GetOneOf().(*testv1.OneOfWKT_V)
+	assert.True(t, ok)
+	_, ok = wktV.V.GetKind().(*structpb.Value_NullValue)
+	assert.True(t, ok)
 }
 
 func TestEnum(t *testing.T) {

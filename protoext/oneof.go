@@ -59,9 +59,9 @@ func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDes
 								for _, b := range structDescriptor.Fields {
 									b.Levels = append([]int{binding.Levels[0], j}, b.Levels...)
 									omitempty := b.Encoder.(*jsoniter.StructFieldEncoder).OmitEmpty
-									b.Encoder = &protoOneofWrapperEncoder{b.Field.Name(), wrapPtrType, b.Encoder}
+									b.Encoder = &protoOneofWrapperEncoder{wrapPtrType, b.Field, b.Encoder}
 									b.Encoder = &jsoniter.StructFieldEncoder{field, b.Encoder, omitempty}
-									b.Decoder = &protoOneofWrapperDecoder{b.Field.Name(), field.Type(), wrapPtrType, wrapPtrType.Elem(), b.Decoder}
+									b.Decoder = &protoOneofWrapperDecoder{field.Type(), wrapPtrType, wrapPtrType.Elem(), b.Field, b.Decoder}
 									b.Decoder = &jsoniter.StructFieldDecoder{field, b.Decoder}
 									c.EmbeddedBindings = append(c.EmbeddedBindings, b)
 								}
@@ -139,8 +139,8 @@ func (enc *protoOptionalEncoder) IsEmbeddedPtrNil(ptr unsafe.Pointer) bool {
 }
 
 type protoOneofWrapperEncoder struct {
-	innerFieldName string
-	valuePtrType   reflect2.Type
+	wrapperPtrType reflect2.Type
+	valueField     reflect2.StructField
 	valueEncoder   jsoniter.ValEncoder
 }
 
@@ -150,13 +150,13 @@ func (encoder *protoOneofWrapperEncoder) Encode(ptr unsafe.Pointer, stream *json
 		return
 	}
 	val := reflect2.IFaceToEFace(ptr)
-	if reflect2.TypeOf(val).RType() != encoder.valuePtrType.RType() {
+	if reflect2.TypeOf(val).RType() != encoder.wrapperPtrType.RType() {
 		stream.WriteNil()
 		return
 	}
 	encoder.valueEncoder.Encode(reflect2.PtrOf(val), stream)
 	if stream.Error != nil && stream.Error != io.EOF {
-		stream.Error = fmt.Errorf("%s: %s", encoder.innerFieldName, stream.Error.Error())
+		stream.Error = fmt.Errorf("%s: %s", encoder.valueField.Name(), stream.Error.Error())
 	}
 }
 
@@ -165,7 +165,7 @@ func (encoder *protoOneofWrapperEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 		return true
 	}
 	val := reflect2.IFaceToEFace(ptr)
-	if reflect2.TypeOf(val).RType() != encoder.valuePtrType.RType() {
+	if reflect2.TypeOf(val).RType() != encoder.wrapperPtrType.RType() {
 		return true
 	}
 	return encoder.valueEncoder.IsEmpty(reflect2.PtrOf(val))
@@ -176,7 +176,7 @@ func (encoder *protoOneofWrapperEncoder) IsEmbeddedPtrNil(ptr unsafe.Pointer) bo
 		return true
 	}
 	val := reflect2.IFaceToEFace(ptr)
-	if reflect2.TypeOf(val).RType() != encoder.valuePtrType.RType() {
+	if reflect2.TypeOf(val).RType() != encoder.wrapperPtrType.RType() {
 		return true
 	}
 	isEmbeddedPtrNil, converted := encoder.valueEncoder.(jsoniter.IsEmbeddedPtrNil)
@@ -187,38 +187,33 @@ func (encoder *protoOneofWrapperEncoder) IsEmbeddedPtrNil(ptr unsafe.Pointer) bo
 }
 
 type protoOneofWrapperDecoder struct {
-	innerFieldName string
-	fieldType      reflect2.Type
-	valuePtrType   reflect2.Type
-	valueElemType  reflect2.Type
-	valueDecoder   jsoniter.ValDecoder
+	wrapperIfaceType reflect2.Type
+	wrapperPtrType   reflect2.Type
+	wrapperElemType  reflect2.Type
+	valueField       reflect2.StructField
+	valueDecoder     jsoniter.ValDecoder
 }
 
 func (decoder *protoOneofWrapperDecoder) Decode(fieldPtr unsafe.Pointer, iter *jsoniter.Iterator) {
-	if iter.ReadNil() {
-		decoder.fieldType.UnsafeSet(fieldPtr, decoder.fieldType.UnsafeNew())
-		return
-	}
-
 	var elem interface{}
 
 	// reuse it if type match
 	if *((*unsafe.Pointer)(fieldPtr)) != nil {
 		elem = reflect2.IFaceToEFace(fieldPtr)
-		if reflect2.TypeOf(elem).RType() != decoder.valuePtrType.RType() {
+		if reflect2.TypeOf(elem).RType() != decoder.wrapperPtrType.RType() {
 			elem = nil
 		}
 	}
 	if elem == nil {
-		elem = decoder.valueElemType.New()
+		elem = decoder.wrapperElemType.New()
 	}
 
 	decoder.valueDecoder.Decode(reflect2.PtrOf(elem), iter)
 	if iter.Error != nil && iter.Error != io.EOF {
-		iter.Error = fmt.Errorf("%s: %s", decoder.innerFieldName, iter.Error.Error())
+		iter.Error = fmt.Errorf("%s: %s", decoder.valueField.Name(), iter.Error.Error())
 		return
 	}
 
-	rval := reflect.ValueOf(decoder.fieldType.PackEFace(fieldPtr))
+	rval := reflect.ValueOf(decoder.wrapperIfaceType.PackEFace(fieldPtr))
 	rval.Elem().Set(reflect.ValueOf(elem))
 }
