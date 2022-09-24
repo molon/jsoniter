@@ -10,7 +10,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/runtime/protoimpl"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -75,7 +74,13 @@ func (enc *protoEnumNameEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Str
 		stream.WriteNil()
 		return
 	}
-	stream.WriteString(protoimpl.X.EnumStringOf(enc.enumDesc, x.Number()))
+	n := x.Number()
+	ev := enc.enumDesc.Values().ByNumber(n)
+	if ev != nil {
+		stream.WriteString(string(ev.Name()))
+	} else {
+		stream.WriteVal(n)
+	}
 }
 
 func (enc *protoEnumNameEncoder) IsEmpty(ptr unsafe.Pointer) bool {

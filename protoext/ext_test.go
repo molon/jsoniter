@@ -14,6 +14,7 @@ import (
 	"github.com/json-iterator/go/extra"
 	"github.com/json-iterator/go/protoext"
 	testv1 "github.com/json-iterator/go/protoext/internal/gen/go/test/v1"
+	pb3 "github.com/json-iterator/go/protoext/internal/protojson/textpb3"
 	"github.com/modern-go/reflect2"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -268,6 +269,12 @@ func TestEmitUnpopulated(t *testing.T) {
 	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
+
+	jsn, _ := cfg.MarshalToString(&pb3.Scalars{})
+	log.Println(jsn)
+
+	bb, _ := cfg.MarshalIndent(&pb3.Scalars{}, "", "  ")
+	log.Println(string(bb))
 }
 
 func TestWkt(t *testing.T) {
@@ -385,29 +392,22 @@ func TestEnum(t *testing.T) {
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
-	var err error
-	var jsnA, jsnB string
-	m2 := &testv1.All{}
 	m := &testv1.All{}
 	m.E = testv1.JsonEnum_JSON_ENUM_UNSPECIFIED
 	m.O = &testv1.Optionals{
 		E: &m.E,
 	}
-	jsnA, err = cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	jsnB, err = pMarshalToString(m)
-	assert.Nil(t, err)
-	assert.Equal(t, jsnA, jsnB)
+	commonCheck(t, cfg, nil, m)
 
 	m.E = testv1.JsonEnum_JSON_ENUM_SOME
-	jsn, err := cfg.MarshalToString(m)
-	assert.Nil(t, err)
-	assert.Equal(t, `{"e":"JSON_ENUM_SOME","o":{"e":"JSON_ENUM_SOME"}}`, jsn)
+	commonCheck(t, cfg, nil, m)
 
-	m2.Reset()
-	err = cfg.UnmarshalFromString(jsn, m2)
-	assert.Nil(t, err)
-	assert.True(t, ProtoEqual(m, m2))
+	m.E = testv1.JsonEnum(2)
+	commonCheck(t, cfg, nil, m)
+
+	var err error
+	var jsn, jsnA, jsnB string
+	m2 := &testv1.All{}
 
 	// test fuzzy decode enum
 	m2.Reset()
@@ -779,6 +779,18 @@ func TestNilValues(t *testing.T) {
 	m.RptWktS = []*structpb.Struct{s, (*structpb.Struct)(nil)}
 	m.RptWktLv = []*structpb.ListValue{nil, lv, nil}
 	commonCheck(t, cfg, mOpts, m)
+}
+
+func TestIndent(t *testing.T) {
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	b, err := cfg.MarshalIndent(&testv1.Singular{}, "", "  ")
+	assert.Nil(t, err)
+	log.Printf("%v", string(b))
+
+	b, err = json.MarshalIndent(&testv1.Singular{}, "", "  ")
+	assert.Nil(t, err)
+	log.Printf("%v", string(b))
 }
 
 func TestCaseNull(t *testing.T) {
