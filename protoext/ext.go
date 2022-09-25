@@ -1,7 +1,6 @@
 package protoext
 
 import (
-	"reflect"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -23,6 +22,7 @@ type ProtoExtension struct {
 	}
 
 	Encode64BitAsInteger bool
+	SortMapKeysAsString  bool
 }
 
 func (e *ProtoExtension) GetResolver() interface {
@@ -55,50 +55,42 @@ func (e *ProtoExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
 	return nil
 }
 
-// Handle 64BitInteger as string
-func (e *ProtoExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEncoder {
-	if e.Encode64BitAsInteger {
-		return nil
-	}
-	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
-		// avoid quote it repeatedly
-		return &dynamicEncoder{typ}
-	}
-	return nil
+func (e *ProtoExtension) UpdateMapEncoderConstructor(v *jsoniter.MapEncoderConstructor) {
+	e.updateMapEncoderConstructorForNonNull(v)
+	e.updateMapEncoderConstructorForSortMapKeys(v)
+	e.updateMapEncoderConstructorForScalar(v)
+}
+
+func (e *ProtoExtension) UpdateSliceEncoderConstructor(v *jsoniter.SliceEncoderConstructor) {
+	e.updateSliceEncoderConstructorForNonNull(v)
+}
+
+func (e *ProtoExtension) UpdateArrayEncoderConstructor(v *jsoniter.ArrayEncoderConstructor) {
+	e.updateArrayEncoderConstructorForNonNull(v)
 }
 
 func (e *ProtoExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
-	if enc := decorateEncoderForNilCollection(typ, encoder); enc != nil {
+	if enc := e.decorateEncoderForNilCollection(typ, encoder); enc != nil {
 		encoder = enc
 	}
-
-	if enc := decorateEncoderForScalar(typ, encoder); enc != nil {
+	if enc := e.decorateEncoderForScalar(typ, encoder); enc != nil {
 		encoder = enc
-	}
-
-	if e.Encode64BitAsInteger {
-		return encoder
-	}
-	// https://developers.google.com/protocol-buffers/docs/proto3 int64, fixed64, uint64 should be string
-	// https://github.com/protocolbuffers/protobuf-go/blob/e62d8edb7570c986a51e541c161a0c93bbaf9253/encoding/protojson/encode.go#L274-L277
-	// https://github.com/protocolbuffers/protobuf-go/pull/14
-	// https://github.com/golang/protobuf/issues/1414
-	if typ.Kind() == reflect.Int64 || typ.Kind() == reflect.Uint64 {
-		return &stringModeNumberEncoder{encoder}
 	}
 	return encoder
 }
 
 func (e *ProtoExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
-	if dec := decorateDecoderForNil(typ, decoder); dec != nil {
+	if dec := e.decorateDecoderForNil(typ, decoder); dec != nil {
 		decoder = dec
 	}
-
-	if dec := decorateDecoderForScalar(typ, decoder); dec != nil {
+	if dec := e.decorateDecoderForScalar(typ, decoder); dec != nil {
 		decoder = dec
 	}
-
 	return decoder
+}
+
+func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDescriptorConstructor) {
+	e.updateStructDescriptorConstructorForOneOf(c)
 }
 
 // Handle EmitUnpopulated and UseProtoNames

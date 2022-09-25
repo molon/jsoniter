@@ -70,7 +70,7 @@ func TestPjNilValue(t *testing.T) {
 	assert.Equal(t, `{"e":"JSON_ENUM_UNSPECIFIED","s":"","i32":0,"i64":"0","u32":0,"u64":"0","f32":0,"f64":0,"si32":0,"si64":"0","fi32":0,"fi64":"0","sfi32":0,"sfi64":"0","bl":false,"by":"","msg":null}`, jsn)
 
 	// - marshal elem in (list or map) to zero value
-	// - (Not Implement) sorts false before true, numeric keys in ascending order, and strings in lexicographical ordering according to UTF-8 codepoints.
+	// - sorts false before true, numeric keys in ascending order, and strings in lexicographical ordering according to UTF-8 codepoints.
 	m = &testv1.All{
 		RWkt: &testv1.RepeatedWKTs{
 			D: []*durationpb.Duration{nil},

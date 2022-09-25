@@ -12,9 +12,30 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-func decorateEncoderForScalar(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEncoder {
+func (e *ProtoExtension) updateMapEncoderConstructorForScalar(v *jsoniter.MapEncoderConstructor) {
+	// handle 64bit integer key, avoid quote it repeatedly
+	if e.Encode64BitAsInteger {
+		return
+	}
+	typ := v.MapType.Key()
+	switch typ.Kind() {
+	case reflect.Int64, reflect.Uint64:
+		v.KeyEncoder = &dynamicEncoder{v.MapType.Key()}
+	}
+}
+
+func (e *ProtoExtension) decorateEncoderForScalar(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEncoder {
 	var bitSize int
 	switch typ.Kind() {
+	case reflect.Int64, reflect.Uint64:
+		// https://developers.google.com/protocol-buffers/docs/proto3 int64, fixed64, uint64 should be string
+		// https://github.com/protocolbuffers/protobuf-go/blob/e62d8edb7570c986a51e541c161a0c93bbaf9253/encoding/protojson/encode.go#L274-L277
+		// https://github.com/protocolbuffers/protobuf-go/pull/14
+		// https://github.com/golang/protobuf/issues/1414
+		if e.Encode64BitAsInteger {
+			return enc
+		}
+		return &stringModeNumberEncoder{enc}
 	case reflect.Float32:
 		bitSize = 32
 	case reflect.Float64:
@@ -50,7 +71,7 @@ func decorateEncoderForScalar(typ reflect2.Type, enc jsoniter.ValEncoder) jsonit
 	}
 }
 
-func decorateDecoderForScalar(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
+func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
 	// []byte
 	if typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 		return &funcDecoder{
@@ -83,10 +104,6 @@ func decorateDecoderForScalar(typ reflect2.Type, dec jsoniter.ValDecoder) jsonit
 
 	var bitSize int
 	switch typ.Kind() {
-	case reflect.Float32:
-		bitSize = 32
-	case reflect.Float64:
-		bitSize = 64
 	case reflect.Bool,
 		reflect.Int,
 		reflect.Int8,
@@ -117,6 +134,10 @@ func decorateDecoderForScalar(typ reflect2.Type, dec jsoniter.ValDecoder) jsonit
 				}
 			},
 		}
+	case reflect.Float32:
+		bitSize = 32
+	case reflect.Float64:
+		bitSize = 64
 	}
 
 	if bitSize <= 0 {

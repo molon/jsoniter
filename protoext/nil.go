@@ -12,7 +12,7 @@ import (
 
 // https://github.com/golang/protobuf/issues/1487
 
-func decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
+func (e *ProtoExtension) decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	// - marshal nil []byte to ""
 	// - marshal nil slice to []
 	// - marshal nil map to {}
@@ -48,7 +48,7 @@ func decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEnco
 
 var wktValuePtrType = reflect2.TypeOfPtr((*structpb.Value)(nil))
 
-func decorateDecoderForNil(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
+func (e *ProtoExtension) decorateDecoderForNil(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
 	// - unmarshal null to NULL value
 	if typ == wktValuePtrType {
 		return &funcDecoder{
@@ -122,14 +122,14 @@ func noNullElemEncoderForCollection(valueType reflect2.Type, encoder jsoniter.Va
 	}
 }
 
-func (e *ProtoExtension) UpdateMapEncoderConstructor(v *jsoniter.MapEncoderConstructor) {
+func (e *ProtoExtension) updateMapEncoderConstructorForNonNull(v *jsoniter.MapEncoderConstructor) {
 	v.ElemEncoder = noNullElemEncoderForCollection(v.MapType.Elem(), v.ElemEncoder)
 }
 
-func (e *ProtoExtension) UpdateSliceEncoderConstructor(v *jsoniter.SliceEncoderConstructor) {
+func (e *ProtoExtension) updateSliceEncoderConstructorForNonNull(v *jsoniter.SliceEncoderConstructor) {
 	v.ElemEncoder = noNullElemEncoderForCollection(v.SliceType.Elem(), v.ElemEncoder)
 }
 
-func (e *ProtoExtension) UpdateArrayEncoderConstructor(v *jsoniter.ArrayEncoderConstructor) {
+func (e *ProtoExtension) updateArrayEncoderConstructorForNonNull(v *jsoniter.ArrayEncoderConstructor) {
 	v.ElemEncoder = noNullElemEncoderForCollection(v.ArrayType.Elem(), v.ElemEncoder)
 }

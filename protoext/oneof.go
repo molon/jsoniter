@@ -16,7 +16,7 @@ import (
 
 var protoMessageType = reflect2.TypeOfPtr((*proto.Message)(nil)).Elem()
 
-func (e *ProtoExtension) UpdateStructDescriptorConstructor(c *jsoniter.StructDescriptorConstructor) {
+func (e *ProtoExtension) updateStructDescriptorConstructorForOneOf(c *jsoniter.StructDescriptorConstructor) {
 	if !reflect2.PtrTo(c.Type).Implements(protoMessageType) {
 		return
 	}
