@@ -12,6 +12,8 @@ import (
 
 // https://github.com/golang/protobuf/issues/1487
 
+var doubleQuote = []byte{'"', '"'}
+
 func (e *ProtoExtension) decorateEncoderForNilCollection(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
 	// - marshal nil []byte to ""
 	// - marshal nil slice to []
@@ -24,7 +26,7 @@ func (e *ProtoExtension) decorateEncoderForNilCollection(typ reflect2.Type, enco
 			fun: func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 				if *((*unsafe.Pointer)(ptr)) == nil {
 					if isBytes {
-						stream.Write([]byte{'"', '"'})
+						stream.Write(doubleQuote)
 						return
 					}
 					if isList {

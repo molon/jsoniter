@@ -13,10 +13,12 @@ type stringModeNumberEncoder struct {
 	elemEncoder jsoniter.ValEncoder
 }
 
+var singleQuote = []byte{'"'}
+
 func (encoder *stringModeNumberEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	stream.Write([]byte(`"`))
+	stream.Write(singleQuote)
 	encoder.elemEncoder.Encode(ptr, stream)
-	stream.Write([]byte(`"`))
+	stream.Write(singleQuote)
 }
 
 func (encoder *stringModeNumberEncoder) IsEmpty(ptr unsafe.Pointer) bool {
