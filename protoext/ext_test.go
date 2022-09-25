@@ -3,6 +3,7 @@ package protoext_test
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"math"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/json-iterator/go/extra"
 	"github.com/json-iterator/go/protoext"
 	testv1 "github.com/json-iterator/go/protoext/internal/gen/go/test/v1"
+	pb3 "github.com/json-iterator/go/protoext/internal/protojson/textpb3"
 	"github.com/modern-go/reflect2"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -132,6 +134,11 @@ func TestScalar(t *testing.T) {
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	// []byte decode???? // TODO:
+
+	v := &pb3.Scalars{}
+	err = cfg.UnmarshalFromString(`{"sBool": "true"}`, v)
+	assert.Nil(t, err)
+	log.Println(v)
 
 	// nan
 	nan := math.NaN()
