@@ -830,6 +830,11 @@ func TestOptionals(t *testing.T) {
 		U64: wrapperspb.UInt64(0),
 	}
 	commonCheck(t, cfg, nil, mm)
+
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
+	jsn, _ := commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, &testv1.Optionals{})
+	assert.Equal(t, "{}", jsn)
 }
 
 // func TestCaseNull(t *testing.T) {
