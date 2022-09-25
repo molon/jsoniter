@@ -792,6 +792,32 @@ func TestNilValues(t *testing.T) {
 	commonCheck(t, cfg, mOpts, m)
 }
 
+func TestOptionals(t *testing.T) {
+	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	m := &testv1.Optionals{
+		Bl:  proto.Bool(false),
+		I32: proto.Int32(0),
+		I64: proto.Int64(0),
+		U32: proto.Uint32(0),
+		U64: proto.Uint64(0),
+		F32: proto.Float32(0),
+		F64: proto.Float64(0),
+		Id:  proto.String(""),
+		By:  []byte{},
+		E:   testv1.JsonEnum_JSON_ENUM_UNSPECIFIED.Enum(),
+		S:   &testv1.Message{},
+	}
+	commonCheck(t, cfg, nil, m)
+
+	mm := &testv1.OptionalWKTs{
+		I64: wrapperspb.Int64(0),
+		U64: wrapperspb.UInt64(0),
+	}
+	commonCheck(t, cfg, nil, mm)
+}
+
 // func TestCaseNull(t *testing.T) {
 // 	var jsn string
 // 	var err error
