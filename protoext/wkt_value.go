@@ -47,17 +47,17 @@ func marshalWktValue(x *structpb.Value, stream *jsoniter.Stream) error {
 			if math.IsNaN(v.NumberValue) || math.IsInf(v.NumberValue, 0) {
 				return fmt.Errorf("%s: invalid %v value", Value_NumberValue_field_fullname, v)
 			}
-			stream.WriteFloat64(v.NumberValue)
+			stream.WriteVal(v.NumberValue)
 			return nil
 		}
 	case *structpb.Value_StringValue:
 		if v != nil {
-			stream.WriteString(v.StringValue)
+			stream.WriteVal(v.StringValue)
 			return nil
 		}
 	case *structpb.Value_BoolValue:
 		if v != nil {
-			stream.WriteBool(v.BoolValue)
+			stream.WriteVal(v.BoolValue)
 			return nil
 		}
 	case *structpb.Value_StructValue:

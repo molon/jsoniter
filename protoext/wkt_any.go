@@ -57,7 +57,7 @@ func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	if IsWellKnownType(reflect2.TypeOf(em)) {
 		stream.WriteObjectStart()
 		stream.WriteObjectField("@type")
-		stream.WriteString(m.GetTypeUrl())
+		stream.WriteVal(m.GetTypeUrl())
 		stream.WriteMore()
 		stream.WriteObjectField("value")
 		stream.WriteVal(em)
@@ -80,7 +80,7 @@ func (c *wktAnyEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 
 	stream.WriteObjectStart()
 	stream.WriteObjectField("@type")
-	stream.WriteString(m.GetTypeUrl())
+	stream.WriteVal(m.GetTypeUrl())
 	subIter.ReadObjectCB(func(iter *jsoniter.Iterator, field string) bool {
 		stream.WriteMore()
 		stream.WriteObjectField(field)

@@ -77,7 +77,7 @@ func (enc *protoEnumNameEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Str
 	n := x.Number()
 	ev := enc.enumDesc.Values().ByNumber(n)
 	if ev != nil {
-		stream.WriteString(string(ev.Name()))
+		stream.WriteVal(string(ev.Name()))
 	} else {
 		stream.WriteVal(n)
 	}

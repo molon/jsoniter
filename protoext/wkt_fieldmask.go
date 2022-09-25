@@ -31,7 +31,7 @@ var wktFieldmaskCodec = (&ProtoCodec{}).
 			}
 			paths = append(paths, cc)
 		}
-		stream.WriteString(strings.Join(paths, ","))
+		stream.WriteVal(strings.Join(paths, ","))
 	}).
 	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		str := iter.ReadString()

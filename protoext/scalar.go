@@ -2,10 +2,13 @@ package protoext
 
 import (
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -27,6 +30,11 @@ func (e *ProtoExtension) updateMapEncoderConstructorForScalar(v *jsoniter.MapEnc
 func (e *ProtoExtension) decorateEncoderForScalar(typ reflect2.Type, enc jsoniter.ValEncoder) jsoniter.ValEncoder {
 	var bitSize int
 	switch typ.Kind() {
+	case reflect.String:
+		if e.PermitInvalidUTF8 {
+			return enc
+		}
+		return &protoStringEncoder{}
 	case reflect.Int64, reflect.Uint64:
 		// https://developers.google.com/protocol-buffers/docs/proto3 int64, fixed64, uint64 should be string
 		// https://github.com/protocolbuffers/protobuf-go/blob/e62d8edb7570c986a51e541c161a0c93bbaf9253/encoding/protojson/encode.go#L274-L277
@@ -182,3 +190,189 @@ func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsonite
 		},
 	}
 }
+
+type protoStringEncoder struct{}
+
+func (encoder *protoStringEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	str := *((*string)(ptr))
+	buf, err := ParseString(str)
+	if err != nil {
+		stream.Error = fmt.Errorf("ProtoStringEncoder: %w", err)
+		return
+	}
+	stream.Write(buf)
+}
+
+func (encoder *protoStringEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+	return *((*string)(ptr)) == ""
+}
+
+func ParseString(s string) ([]byte, error) {
+	valLen := len(s)
+
+	buf := []byte{'"'}
+	// write string, the fast path, without utf8 and escape support
+	i := 0
+	for ; i < valLen; i++ {
+		c := s[i]
+		if c < utf8.RuneSelf && safeSet[c] {
+			buf = append(buf, c)
+		} else {
+			break
+		}
+	}
+	if i == valLen {
+		buf = append(buf, '"')
+		return buf, nil
+	}
+	return appendStringSlowPath(buf, i, s, valLen)
+}
+
+var errInvalidUTF8 = errors.New("invalid UTF-8")
+
+func appendStringSlowPath(buf []byte, i int, s string, valLen int) ([]byte, error) {
+	start := i
+	// for the remaining parts, we process them char by char
+	for i < valLen {
+		if b := s[i]; b < utf8.RuneSelf {
+			if safeSet[b] {
+				i++
+				continue
+			}
+			if start < i {
+				buf = append(buf, s[start:i]...)
+			}
+			switch b {
+			case '\\', '"':
+				buf = append(buf, '\\', b)
+			case '\b':
+				buf = append(buf, '\\', 'b')
+			case '\f':
+				buf = append(buf, '\\', 'f')
+			case '\n':
+				buf = append(buf, '\\', 'n')
+			case '\r':
+				buf = append(buf, '\\', 'r')
+			case '\t':
+				buf = append(buf, '\\', 't')
+			default:
+				buf = append(buf, `\u00`...)
+				buf = append(buf, hex[b>>4], hex[b&0xF])
+			}
+			i++
+			start = i
+			continue
+		}
+		c, size := utf8.DecodeRuneInString(s[i:])
+		if c == utf8.RuneError && size == 1 {
+			return buf, errInvalidUTF8
+		}
+		i += size
+	}
+	if start < len(s) {
+		buf = append(buf, s[start:]...)
+	}
+	buf = append(buf, '"')
+	return buf, nil
+}
+
+var safeSet = [utf8.RuneSelf]bool{
+	' ':      true,
+	'!':      true,
+	'"':      false,
+	'#':      true,
+	'$':      true,
+	'%':      true,
+	'&':      true,
+	'\'':     true,
+	'(':      true,
+	')':      true,
+	'*':      true,
+	'+':      true,
+	',':      true,
+	'-':      true,
+	'.':      true,
+	'/':      true,
+	'0':      true,
+	'1':      true,
+	'2':      true,
+	'3':      true,
+	'4':      true,
+	'5':      true,
+	'6':      true,
+	'7':      true,
+	'8':      true,
+	'9':      true,
+	':':      true,
+	';':      true,
+	'<':      true,
+	'=':      true,
+	'>':      true,
+	'?':      true,
+	'@':      true,
+	'A':      true,
+	'B':      true,
+	'C':      true,
+	'D':      true,
+	'E':      true,
+	'F':      true,
+	'G':      true,
+	'H':      true,
+	'I':      true,
+	'J':      true,
+	'K':      true,
+	'L':      true,
+	'M':      true,
+	'N':      true,
+	'O':      true,
+	'P':      true,
+	'Q':      true,
+	'R':      true,
+	'S':      true,
+	'T':      true,
+	'U':      true,
+	'V':      true,
+	'W':      true,
+	'X':      true,
+	'Y':      true,
+	'Z':      true,
+	'[':      true,
+	'\\':     false,
+	']':      true,
+	'^':      true,
+	'_':      true,
+	'`':      true,
+	'a':      true,
+	'b':      true,
+	'c':      true,
+	'd':      true,
+	'e':      true,
+	'f':      true,
+	'g':      true,
+	'h':      true,
+	'i':      true,
+	'j':      true,
+	'k':      true,
+	'l':      true,
+	'm':      true,
+	'n':      true,
+	'o':      true,
+	'p':      true,
+	'q':      true,
+	'r':      true,
+	's':      true,
+	't':      true,
+	'u':      true,
+	'v':      true,
+	'w':      true,
+	'x':      true,
+	'y':      true,
+	'z':      true,
+	'{':      true,
+	'|':      true,
+	'}':      true,
+	'~':      true,
+	'\u007f': true,
+}
+
+var hex = "0123456789abcdef"

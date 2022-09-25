@@ -24,7 +24,7 @@ var wktTimestampCodec = (&ProtoCodec{}).
 			stream.Error = err
 			return
 		}
-		stream.WriteString(s)
+		stream.WriteVal(s)
 	}).
 	SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		s := iter.ReadString()

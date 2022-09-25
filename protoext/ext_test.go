@@ -220,6 +220,20 @@ func TestScalar(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, float32(123.1), mm.F32.GetValue())
 	assert.Equal(t, float64(234.5), mm.F64.GetValue())
+
+	vv := &wrapperspb.StringValue{Value: "abc\xff"}
+	_, err = cfg.MarshalToString(vv)
+	assert.Contains(t, err.Error(), "invalid UTF-8")
+
+	commonCheck(t, cfg, nil, &wrapperspb.StringValue{Value: "\u0000\u0008\u2028\"\\/\b\f\n\r\t你好啊朋友"})
+
+	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{
+		PermitInvalidUTF8: true,
+	})
+	jsn, err := cfg.MarshalToString(&wrapperspb.StringValue{Value: "abc\xff"})
+	assert.Nil(t, err)
+	assert.Equal(t, "\"abc\xff\"", jsn)
 }
 
 func TestEmitUnpopulated(t *testing.T) {
