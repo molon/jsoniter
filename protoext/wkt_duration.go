@@ -63,12 +63,12 @@ func marshalWktDuration(m *durationpb.Duration) (string, error) {
 func unmarshalWktDuration(s string, m *durationpb.Duration) error {
 	secs, nanos, ok := parseDuration(s)
 	if !ok {
-		return fmt.Errorf("invalid %v value %v", Duration_message_fullname, s)
+		return fmt.Errorf("invalid %v value %q", Duration_message_fullname, s)
 	}
 	// Validate seconds. No need to validate nanos because parseDuration would
 	// have covered that already.
 	if secs < -maxSecondsInDuration || secs > maxSecondsInDuration {
-		return fmt.Errorf("%v value out of range: %v", Duration_message_fullname, s)
+		return fmt.Errorf("%v value out of range: %q", Duration_message_fullname, s)
 	}
 
 	m.Seconds = secs

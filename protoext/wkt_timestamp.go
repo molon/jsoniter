@@ -56,18 +56,18 @@ func marshalWktTimestamp(m *timestamppb.Timestamp) (string, error) {
 func unmarshalWktTimestamp(s string, m *timestamppb.Timestamp) error {
 	t, err := time.Parse(time.RFC3339Nano, s)
 	if err != nil {
-		return fmt.Errorf("invalid %v value %v: %w", Timestamp_message_fullname, s, err)
+		return fmt.Errorf("invalid %v value %q: %w", Timestamp_message_fullname, s, err)
 	}
 	// Validate seconds.
 	secs := t.Unix()
 	if secs < minTimestampSeconds || secs > maxTimestampSeconds {
-		return fmt.Errorf("%v value out of range: %v", Timestamp_message_fullname, s)
+		return fmt.Errorf("%v value out of range: %q", Timestamp_message_fullname, s)
 	}
 	// Validate subseconds.
 	i := strings.LastIndexByte(s, '.')  // start of subsecond field
 	j := strings.LastIndexAny(s, "Z-+") // start of timezone field
 	if i >= 0 && j >= i && j-i > len(".999999999") {
-		return fmt.Errorf("invalid %v value %v", Timestamp_message_fullname, s)
+		return fmt.Errorf("invalid %v value %q", Timestamp_message_fullname, s)
 	}
 
 	m.Seconds = secs
