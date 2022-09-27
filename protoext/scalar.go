@@ -108,7 +108,7 @@ func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsonite
 		}
 	}
 
-	// TODO: bool/null fuzzy??
+	// TODO: bool/null/other fuzzy??
 
 	var bitSize int
 	switch typ.Kind() {

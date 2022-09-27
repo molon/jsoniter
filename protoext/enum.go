@@ -25,8 +25,7 @@ var (
 func (e *ProtoExtension) createProtoEnumEncoder(typ reflect2.Type) (xret jsoniter.ValEncoder) {
 	if !e.UseEnumNumbers {
 		if typ.Implements(protoEnumType) && typ.Kind() != reflect.Ptr {
-			// TODO: 如果直接是 interface 呢？
-			return &protoEnumNameEncoder{
+			return &protoEnumEncoder{
 				valueType: typ,
 			}
 		}
@@ -59,14 +58,18 @@ func (e *ProtoExtension) createProtoEnumDecoder(typ reflect2.Type) (xret jsonite
 	return nil
 }
 
-type protoEnumNameEncoder struct {
+type protoEnumEncoder struct {
 	valueType reflect2.Type
 	once      sync.Once
 	enumDesc  protoreflect.EnumDescriptor
 }
 
-func (enc *protoEnumNameEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
-	x := enc.valueType.UnsafeIndirect(ptr).(protoreflect.Enum)
+func (enc *protoEnumEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	x, ok := enc.valueType.UnsafeIndirect(ptr).(protoreflect.Enum)
+	if !ok {
+		stream.WriteVal(protoreflect.EnumNumber(0))
+		return
+	}
 	enc.once.Do(func() {
 		enc.enumDesc = x.Descriptor()
 	})
@@ -83,7 +86,7 @@ func (enc *protoEnumNameEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Str
 	}
 }
 
-func (enc *protoEnumNameEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+func (enc *protoEnumEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return *((*protoreflect.EnumNumber)(ptr)) == 0
 }
 

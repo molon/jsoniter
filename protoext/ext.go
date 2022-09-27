@@ -15,9 +15,9 @@ type ProtoExtension struct {
 	EmitUnpopulated bool
 	UseEnumNumbers  bool
 	UseProtoNames   bool
-	// TODO: 目前还未考虑 Unmarshal 里对 FindExtensionByName 的逻辑相关处理
-	Resolver interface {
+	Resolver        interface {
 		protoregistry.MessageTypeResolver
+		// TIPS: does not support it now
 		protoregistry.ExtensionTypeResolver
 	}
 

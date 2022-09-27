@@ -1,4 +1,4 @@
-package protoext
+package protojson
 
 import (
 	"fmt"
@@ -6,11 +6,13 @@ import (
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go/protoext"
 	"github.com/modern-go/reflect2"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
+// TIPS: does not use this now
 type ProtojsonEncoder struct {
 	ElemType    reflect2.Type
 	MarshalOpts protojson.MarshalOptions
@@ -51,8 +53,8 @@ func (dec *ProtojsonDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 	}
 }
 
-var ProtojsonEncoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValEncoder {
-	return WrapElemEncoder(typ, &ProtojsonEncoder{
+var ProtojsonEncoderCreator = func(e *protoext.ProtoExtension, typ reflect2.Type) jsoniter.ValEncoder {
+	return protoext.WrapElemEncoder(typ, &ProtojsonEncoder{
 		ElemType: typ,
 		MarshalOpts: protojson.MarshalOptions{
 			EmitUnpopulated: e.EmitUnpopulated,
@@ -63,8 +65,8 @@ var ProtojsonEncoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsonite
 	}, nil)
 }
 
-var ProtojsonDecoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsoniter.ValDecoder {
-	return WrapElemDecoder(typ, &ProtojsonDecoder{
+var ProtojsonDecoderCreator = func(e *protoext.ProtoExtension, typ reflect2.Type) jsoniter.ValDecoder {
+	return protoext.WrapElemDecoder(typ, &ProtojsonDecoder{
 		ElemType: typ,
 		UnmarshalOpts: protojson.UnmarshalOptions{
 			Resolver:       e.Resolver,
@@ -73,8 +75,8 @@ var ProtojsonDecoderCreator = func(e *ProtoExtension, typ reflect2.Type) jsonite
 	}, nil)
 }
 
-func NewProtojsonCodec() *ProtoCodec {
-	return &ProtoCodec{
+func NewProtojsonCodec() *protoext.ProtoCodec {
+	return &protoext.ProtoCodec{
 		EncoderCreator: ProtojsonEncoderCreator,
 		DecoderCreator: ProtojsonDecoderCreator,
 	}

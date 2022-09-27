@@ -3,7 +3,6 @@ package protoext_test
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"math"
 	"testing"
 	"time"
@@ -13,11 +12,11 @@ import (
 	"github.com/json-iterator/go/extra"
 	"github.com/json-iterator/go/protoext"
 	testv1 "github.com/json-iterator/go/protoext/internal/gen/go/test/v1"
-	pb3 "github.com/json-iterator/go/protoext/internal/protojson/textpb3"
 	"github.com/modern-go/reflect2"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -132,13 +131,6 @@ func TestScalar(t *testing.T) {
 	var err error
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
-
-	// []byte decode???? // TODO:
-
-	v := &pb3.Scalars{}
-	err = cfg.UnmarshalFromString(`{"sBool": "true"}`, v)
-	assert.Nil(t, err)
-	log.Println(v)
 
 	// nan
 	nan := math.NaN()
@@ -403,6 +395,13 @@ func TestNullValue(t *testing.T) {
 func TestEnum(t *testing.T) {
 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
+
+	v := &struct {
+		E protoreflect.Enum
+	}{}
+	vjsn, verr := cfg.MarshalToString(v)
+	assert.Nil(t, verr)
+	assert.Equal(t, `{"E":0}`, vjsn)
 
 	m := &testv1.All{}
 	m.E = testv1.JsonEnum_JSON_ENUM_UNSPECIFIED
@@ -843,108 +842,3 @@ func TestOptionals(t *testing.T) {
 	jsn, _ := commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, &testv1.Optionals{})
 	assert.Equal(t, "{}", jsn)
 }
-
-// func TestCaseNull(t *testing.T) {
-// 	var jsn string
-// 	var err error
-// 	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-// 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
-
-// 	// var bs []byte
-// 	// err = cfg.UnmarshalFromString(`"MTIz"`, &bs)
-// 	// assert.Nil(t, err)
-// 	// log.Printf("%s", string(bs))
-
-// 	// a := "a"
-// 	// strs := []string{a, "b"}
-// 	// strsB := []*string{&a, nil}
-
-// 	// strsC := []**string{&strsB[0], nil}
-// 	// log.Printf("a => %p strs => %p strs[0] => %p strsB[0] => %p", &a, strs, &strs[0], &strsB[0])
-
-// 	// m := struct {
-// 	// 	Strs  []string
-// 	// 	StrsB []*string
-// 	// 	StrsC []**string
-// 	// 	Strss [][]string
-// 	// 	Bytes [][]byte
-// 	// }{
-// 	// 	Strs:  strs,
-// 	// 	StrsB: strsB,
-// 	// 	StrsC: strsC,
-// 	// 	Strss: [][]string{[]string{"a"}, nil, []string{"c"}},
-// 	// 	Bytes: [][]byte{[]byte(`a`), nil, []byte(`c`)},
-// 	// }
-
-// 	m := &testv1.CaseValue{
-// 		V: structpb.NewBoolValue(false),
-// 		// Strs: strs,
-// 		// Nus: []structpb.NullValue{structpb.NullValue_NULL_VALUE, structpb.NullValue_NULL_VALUE},
-// 		// Vs: []*structpb.Value{
-// 		// 	structpb.NewNullValue(),
-// 		// 	// nil,
-// 		// 	// structpb.NewBoolValue(false),
-// 		// 	&structpb.Value{
-// 		// 		Kind: &structpb.Value_StructValue{}, // protojson marshal一个 nil struct value 为 {}
-// 		// 	},
-// 		// 	// &structpb.Value{
-// 		// 	// 	Kind: (*structpb.Value_StructValue)(nil), // protojson marshal一个 nil struct value 为 {}
-// 		// 	// },
-// 		// },
-// 	}
-// 	// a, _ := anypb.New(wrapperspb.String("wrapStr"))
-// 	// a, _ := anypb.New(&testv1.Message{Id: "idA"})
-// 	// s, _ := structpb.NewStruct(map[string]interface{}{
-// 	// 	"keyA": "valueA",
-// 	// 	"keyB": nil,
-// 	// 	"keyC": "valueC",
-// 	// })
-// 	// a, _ := anypb.New(s)
-// 	// lv, _ := structpb.NewList([]interface{}{
-// 	// 	nil,
-// 	// 	true,
-// 	// 	-1,
-// 	// 	1.5,
-// 	// 	"str",
-// 	// 	[]byte(nil),
-// 	// 	map[string]interface{}{
-// 	// 		"b": false,
-// 	// 	},
-// 	// 	[]interface{}{
-// 	// 		1, 2, 3, nil,
-// 	// 	},
-// 	// })
-// 	// a, _ := anypb.New(lv)
-// 	// m.A = a
-
-// 	jsn, err = pMarshalToString(m)
-// 	assert.Nil(t, err)
-// 	log.Println(string(jsn))
-
-// 	jsn, err = cfg.MarshalToString(m)
-// 	assert.Nil(t, err)
-// 	log.Println(string(jsn))
-
-// 	bb, err := cfg.MarshalIndent(m, "", "    ")
-// 	assert.Nil(t, err)
-// 	log.Println(string(bb))
-
-// 	m2 := proto.Clone(m)
-// 	err = cfg.UnmarshalFromString(jsn, m2)
-// 	assert.Nil(t, err)
-// 	assert.True(t, ProtoEqual(m, m2))
-// 	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.GetA().GetValue()))
-// 	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).GetA().GetValue()))
-// 	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
-
-// 	m2 = proto.Clone(m)
-// 	err = pUnmarshalFromString(jsn, m2)
-// 	assert.Nil(t, err)
-// 	assert.True(t, ProtoEqual(m, m2))
-// 	log.Printf("%+v", base64.StdEncoding.EncodeToString(m.GetA().GetValue()))
-// 	log.Printf("%+v", base64.StdEncoding.EncodeToString(m2.(*testv1.CaseValue).GetA().GetValue()))
-// 	log.Printf("%s", cmp.Diff(m, m2, protocmp.Transform()))
-
-// 	log.Println("----")
-// 	cfg.MarshalToString(structpb.NewBoolValue(false))
-// }

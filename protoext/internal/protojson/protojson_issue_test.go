@@ -1,4 +1,4 @@
-package protoext_test
+package protojson_test
 
 import (
 	"bytes"
@@ -17,6 +17,28 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+func pMarshalToStringWithOpts(opts protojson.MarshalOptions, m proto.Message) (string, error) {
+	by, err := opts.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+	// https://github.com/golang/protobuf/issues/1121
+	var out bytes.Buffer
+	err = json.Compact(&out, by)
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+func pMarshalToString(m proto.Message) (string, error) {
+	return pMarshalToStringWithOpts(protojson.MarshalOptions{}, m)
+}
+
+func pUnmarshalFromString(s string, m proto.Message) error {
+	return protojson.Unmarshal([]byte(s), m)
+}
 
 // https://github.com/golang/protobuf/issues/1121
 func TestPjCompactIssue(t *testing.T) {
@@ -126,7 +148,7 @@ func TestPjWktValue(t *testing.T) {
 	assert.True(t, proto.Equal(structpb.NewNullValue(), m2.(*testv1.WKTs).V))
 	assert.Nil(t, m.(*testv1.WKTs).V)
 	assert.NotNil(t, m2.(*testv1.WKTs).V)
-	assert.False(t, ProtoEqual(m, m2))
+	assert.False(t, cmp.Diff(m, m2, protocmp.Transform()) == "")
 }
 
 // marshal bit 64 to string // TODO:
