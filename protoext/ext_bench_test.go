@@ -12,9 +12,6 @@ import (
 )
 
 func BenchmarkWrite(b *testing.B) {
-	cfg := jsoniter.Config{}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{})
-
 	f := appendFuzzFuncs(gofuzz.New())
 	var ms []*testv1.All
 	for i := 0; i < 10000; i++ {
@@ -31,25 +28,33 @@ func BenchmarkWrite(b *testing.B) {
 			_, _ = protojson.Marshal(m)
 		}
 	})
+
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	b.Run("jsoniter", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			m := ms[rand.Intn(len(ms))]
 			_, _ = cfg.Marshal(m)
 		}
 	})
+
+	fcfg := jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	fcfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true})
+	b.Run("jsoniter-fast", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			m := ms[rand.Intn(len(ms))]
+			_, _ = fcfg.Marshal(m)
+		}
+	})
 }
 
 func BenchmarkRead(b *testing.B) {
-	cfg := jsoniter.Config{}.Froze()
-	cfg.RegisterExtension(&protoext.ProtoExtension{})
-
 	f := appendFuzzFuncs(gofuzz.New())
 	var buffers [][]byte
 	for i := 0; i < 10000; i++ {
 		var all testv1.All
 		f.Fuzz(&all)
 		buffer, _ := protojson.Marshal(&all)
-		// buffer, _ := cfg.Marshal(&all)
 		buffers = append(buffers, buffer)
 	}
 
@@ -62,10 +67,22 @@ func BenchmarkRead(b *testing.B) {
 			_ = protojson.Unmarshal(buffer, &all)
 		}
 	})
+
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	b.Run("jsoniter", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
 			_ = cfg.Unmarshal(buffer, &all)
+		}
+	})
+
+	fcfg := jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	fcfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true})
+	b.Run("jsoniter-fast", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			buffer := buffers[rand.Intn(len(buffers))]
+			_ = fcfg.Unmarshal(buffer, &all)
 		}
 	})
 }
