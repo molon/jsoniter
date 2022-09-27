@@ -107,7 +107,7 @@ func TestJsonName(t *testing.T) {
 	}
 
 	// UseProtoNames: false
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	commonCheck(t, cfg, nil, m)
 	// fuzzy decode
@@ -117,7 +117,7 @@ func TestJsonName(t *testing.T) {
 
 	// UseProtoNames: true
 	m.SnakeCase = "snake_case✅"
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{UseProtoNames: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{UseProtoNames: true}, m)
 	// fuzzy decode
@@ -129,7 +129,7 @@ func TestJsonName(t *testing.T) {
 
 func TestScalar(t *testing.T) {
 	var err error
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	// nan
@@ -170,8 +170,13 @@ func TestScalar(t *testing.T) {
 	}
 	commonCheck(t, cfg, nil, m)
 
+	nofuzzyCfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
+	nofuzzyCfg.RegisterExtension(&protoext.ProtoExtension{DisableFuzzyDecode: true})
+
 	// fuzzy decode float
 	m = &testv1.Singular{}
+	err = nofuzzyCfg.UnmarshalFromString(`{"f32":"123.1","f64":"234.5"}`, m)
+	assert.Contains(t, err.Error(), "invalid number")
 	err = cfg.UnmarshalFromString(`{"f32":"123.1","f64":"234.5"}`, m)
 	assert.Nil(t, err)
 	assert.Equal(t, float32(123.1), m.F32)
@@ -179,7 +184,7 @@ func TestScalar(t *testing.T) {
 
 	// fuzzy decode all
 	m = &testv1.Singular{}
-	err = cfg.UnmarshalFromString(`{"e":"JSON_ENUM_SOME","s":100,"i32":"1","i64":2,"u32":"3","u64":4,"f32":"5","f64":"6","si32":"7","si64":8,"fi32":"9","fi64":10,"sfi32":"11","sfi64":12,"bl":"true"}`, m)
+	err = cfg.UnmarshalFromString(`{"e":"JSON_ENUM_SOME","s":100,"i32":"1","i64":2,"u32":"3","u64":4,"f32":"5","f64":"true","si32":null,"si64":8,"fi32":true,"fi64":10,"sfi32":"11","sfi64":12,"bl":"true"}`, m)
 	assert.Nil(t, err)
 	assert.True(t, ProtoEqual(&testv1.Singular{
 		E:     testv1.JsonEnum_JSON_ENUM_SOME,
@@ -189,10 +194,10 @@ func TestScalar(t *testing.T) {
 		U32:   3,
 		U64:   4,
 		F32:   5,
-		F64:   6,
-		Si32:  7,
+		F64:   1,
+		Si32:  0,
 		Si64:  8,
-		Fi32:  9,
+		Fi32:  1,
 		Fi64:  10,
 		Sfi32: 11,
 		Sfi64: 12,
@@ -226,7 +231,7 @@ func TestScalar(t *testing.T) {
 
 	commonCheck(t, cfg, nil, &wrapperspb.StringValue{Value: "\u0000\u0008\u2028\"\\/\b\f\n\r\t你好啊朋友"})
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{
 		PermitInvalidUTF8: true,
 	})
@@ -272,11 +277,11 @@ func TestEmitUnpopulated(t *testing.T) {
 		},
 	}
 
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	commonCheck(t, cfg, &protojson.MarshalOptions{}, m)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, m)
 }
@@ -313,13 +318,13 @@ func TestWkt(t *testing.T) {
 		},
 	}
 
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	jsn, err := cfg.MarshalToString(m)
 	assert.Nil(t, err)
 	assert.Equal(t, `{"d":"36s","t":"2022-06-09T21:03:49.560Z","i32":-2,"ui32":0,"i64":"0","u64":"0","f32":0,"f64":0,"fm":"f.displayName,f.b.c","em":{}}`, jsn)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	// because m is not proto.Message, if we want all emit empty instead with `EmitUnpopulated:true`, should register EmitEmptyExtension
 	cfg.RegisterExtension(&extra.EmitEmptyExtension{})
@@ -329,7 +334,7 @@ func TestWkt(t *testing.T) {
 }
 
 func TestUnmarshalExistWkt(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	var err error
@@ -349,7 +354,7 @@ func TestNullValue(t *testing.T) {
 	var jsn string
 	var err error
 	var ok bool
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	nu := structpb.NullValue_NULL_VALUE
@@ -393,7 +398,7 @@ func TestNullValue(t *testing.T) {
 }
 
 func TestEnum(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	v := &struct {
@@ -454,7 +459,7 @@ func TestEnum(t *testing.T) {
 	assert.Equal(t, `{"r":{"e":["JSON_ENUM_SOME","JSON_ENUM_UNSPECIFIED"]}}`, jsn)
 
 	// UseEnumNumbers: true
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{UseEnumNumbers: true})
 
 	m = &testv1.All{
@@ -470,7 +475,7 @@ func TestEnum(t *testing.T) {
 }
 
 func TestInteger64AsString(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	i64 := int64(-224123123123123123)
@@ -530,7 +535,7 @@ func TestInteger64AsString(t *testing.T) {
 	}
 	commonCheck(t, cfg, nil, m)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{Encode64BitAsInteger: true})
 	jsn, err = cfg.MarshalToString(m)
 	assert.Nil(t, err)
@@ -555,7 +560,7 @@ func TestInteger64AsString(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, `{"M1":{"-3":30,"-2":20,"-1":10},"M2":{"1":-10,"2":-20,"3":-30}}`, jsn)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 	jsn, err = cfg.MarshalToString(mm)
 	assert.Nil(t, err)
@@ -563,7 +568,7 @@ func TestInteger64AsString(t *testing.T) {
 }
 
 func TestSortMapKeys(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	m := &testv1.Map{
@@ -573,7 +578,7 @@ func TestSortMapKeys(t *testing.T) {
 	}
 	commonCheck(t, cfg, nil, m)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{
 		SortMapKeysAsString: true,
 	})
@@ -583,7 +588,7 @@ func TestSortMapKeys(t *testing.T) {
 }
 
 func TestOneof(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	m := &testv1.All{}
@@ -660,7 +665,7 @@ func TestOneof(t *testing.T) {
 }
 
 func TestAny(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	m := &testv1.All{
@@ -720,7 +725,7 @@ func TestAny(t *testing.T) {
 }
 
 func TestNilValues(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	mOpts := &protojson.MarshalOptions{EmitUnpopulated: true}
 
@@ -813,7 +818,7 @@ func TestNilValues(t *testing.T) {
 }
 
 func TestOptionals(t *testing.T) {
-	cfg := jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{})
 
 	m := &testv1.Optionals{
@@ -837,7 +842,7 @@ func TestOptionals(t *testing.T) {
 	}
 	commonCheck(t, cfg, nil, mm)
 
-	cfg = jsoniter.Config{SortMapKeys: true}.Froze()
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
 	cfg.RegisterExtension(&protoext.ProtoExtension{EmitUnpopulated: true})
 	jsn, _ := commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, &testv1.Optionals{})
 	assert.Equal(t, "{}", jsn)

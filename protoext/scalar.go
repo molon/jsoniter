@@ -1,7 +1,9 @@
 package protoext
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -79,7 +81,18 @@ func (e *ProtoExtension) decorateEncoderForScalar(typ reflect2.Type, enc jsonite
 	}
 }
 
+var (
+	nanBytes           = []byte(`"NaN"`)
+	infBytes           = []byte(`"Infinity"`)
+	ninfBytes          = []byte(`"-Infinity"`)
+	jsonNumberElemType = reflect2.TypeOfPtr((*json.Number)(nil)).Elem()
+)
+
 func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsoniter.ValDecoder) jsoniter.ValDecoder {
+	if typ.Implements(protoEnumType) || typ == jsonNumberElemType {
+		return dec
+	}
+
 	// []byte
 	if typ.Kind() == reflect.Slice && typ.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 		return &funcDecoder{
@@ -108,42 +121,24 @@ func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsonite
 		}
 	}
 
-	// TODO: bool/null/other fuzzy??
+	if !e.DisableFuzzyDecode {
+		if ddec, ok := fuzzyDecorateScalarDecoders[typ.Kind()]; ok {
+			dec = ddec(e, dec)
+		}
+	}
 
 	var bitSize int
 	switch typ.Kind() {
-	case reflect.Bool,
-		reflect.Int,
-		reflect.Int8,
-		reflect.Int16,
-		reflect.Int32,
-		reflect.Int64,
-		reflect.Uint,
-		reflect.Uint8,
-		reflect.Uint16,
-		reflect.Uint32,
-		reflect.Uint64:
-		// fuzzy decode
-		if !typ.Implements(protoEnumType) {
-			return &stringModeNumberDecoder{dec}
-		}
+	case reflect.Int64, reflect.Uint64:
+		return &stringModeNumberDecoder{elemDecoder: dec}
 	case reflect.String:
 		return &funcDecoder{
 			fun: func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-				valueType := iter.WhatIsNext()
-				switch valueType {
-				case jsoniter.NumberValue:
-					*((*string)(ptr)) = string(iter.ReadNumber())
-				case jsoniter.NilValue:
-					iter.Skip()
-					*((*string)(ptr)) = ""
-				default:
-					dec.Decode(ptr, iter)
-					if iter.Error == nil {
-						if !e.PermitInvalidUTF8 {
-							if !utf8.ValidString(*((*string)(ptr))) {
-								iter.Error = errInvalidUTF8
-							}
+				dec.Decode(ptr, iter)
+				if iter.Error == nil {
+					if !e.PermitInvalidUTF8 {
+						if !utf8.ValidString(*((*string)(ptr))) {
+							iter.Error = errInvalidUTF8
 						}
 					}
 				}
@@ -162,29 +157,27 @@ func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsonite
 	return &funcDecoder{
 		fun: func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 			if iter.WhatIsNext() == jsoniter.StringValue {
-				str := iter.ReadString()
-				switch str {
-				case "NaN":
+				b := iter.SkipAndReturnBytes()
+				if bytes.Equal(b, nanBytes) {
 					if bitSize == 32 {
 						*((*float32)(ptr)) = float32(math.NaN())
 					} else {
 						*((*float64)(ptr)) = math.NaN()
 					}
-				case "Infinity":
+				} else if bytes.Equal(b, infBytes) {
 					if bitSize == 32 {
 						*((*float32)(ptr)) = float32(math.Inf(+1))
 					} else {
 						*((*float64)(ptr)) = math.Inf(+1)
 					}
-				case "-Infinity":
+				} else if bytes.Equal(b, ninfBytes) {
 					if bitSize == 32 {
 						*((*float32)(ptr)) = float32(math.Inf(-1))
 					} else {
 						*((*float64)(ptr)) = math.Inf(-1)
 					}
-				default:
-					// fuzzy decode
-					subIter := iter.Pool().BorrowIterator([]byte(str))
+				} else {
+					subIter := iter.Pool().BorrowIterator(b)
 					subIter.Attachment = iter.Attachment
 					defer iter.API().ReturnIterator(subIter)
 					dec.Decode(ptr, subIter)
@@ -203,6 +196,7 @@ type protoStringEncoder struct{}
 
 func (encoder *protoStringEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	str := *((*string)(ptr))
+	// TODO: html escape??
 	buf, err := ParseString(str)
 	if err != nil {
 		stream.Error = fmt.Errorf("ProtoStringEncoder: %w", err)

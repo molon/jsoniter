@@ -24,6 +24,7 @@ type ProtoExtension struct {
 	Encode64BitAsInteger bool
 	SortMapKeysAsString  bool
 	PermitInvalidUTF8    bool
+	DisableFuzzyDecode   bool
 }
 
 func (e *ProtoExtension) GetResolver() interface {

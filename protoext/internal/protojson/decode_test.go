@@ -1435,7 +1435,9 @@ func TestUnmarshal(t *testing.T) {
 
 	
 	const ignores = `
+	[FuzzyDecode] not float
 	[FuzzyDecode] not boolean
+	[FuzzyDecode] integer string with trailing space
 	[FuzzyDecode] integer string with leading space
 	[FuzzyDecode] float string with leading space
 	[FuzzyDecode] double string with trailing space
@@ -1458,17 +1460,14 @@ func TestUnmarshal(t *testing.T) {
 	[ErrMsgNotSame] Any with missing @type
 	[ErrMsgNotSame] Any with empty @type
 	[ErrMsgNotSame] Any with duplicate value
-	[NotSupport] integers
-	[NotSupport] integers in string
-	[NotSupport] integers in escaped string
 	[NotSupport] proto name and json_name
 	[NotSupport] duplicate field names
 	[NotSupport] oneof set to more than one field
 	[NotSupport] oneof set to null and value
 	[NotSupport] map contains duplicate keys
-	[NotSupport] Int32Value in JSON string
 	[NotSupport] DiscardUnknown: Any without type
 	`
+	
 	ignoreDescs := map[string]string{}
 	r := regexp.MustCompile("\\[([^\\]]+)\\]\\s*(.+)")
 	for _, v := range strings.Split(ignores, "\n") {
@@ -1495,9 +1494,7 @@ func TestUnmarshal(t *testing.T) {
 
 		t.Run(tt.desc, func(t *testing.T) {
 			cfg := jsoniter.Config{SortMapKeys: true,DisallowUnknownFields: !tt.umo.DiscardUnknown}.Froze()
-			cfg.RegisterExtension(&protoext.ProtoExtension{
-				Resolver: tt.umo.Resolver,
-			})
+			cfg.RegisterExtension(&protoext.ProtoExtension{Resolver: tt.umo.Resolver})
 			err := cfg.Unmarshal([]byte(tt.inputText), tt.inputMessage)
 			if err != nil {
 				if tt.wantErr == "" {
@@ -1521,3 +1518,4 @@ func TestUnmarshal(t *testing.T) {
 		})
 	}
 }	
+

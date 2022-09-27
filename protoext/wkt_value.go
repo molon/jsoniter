@@ -93,12 +93,16 @@ func unmarshalWktValue(x *structpb.Value, iter *jsoniter.Iterator) error {
 			NullValue: structpb.NullValue_NULL_VALUE,
 		}
 	case jsoniter.BoolValue:
+		var val bool
+		iter.ReadVal(&val)
 		x.Kind = &structpb.Value_BoolValue{
-			BoolValue: iter.ReadBool(),
+			BoolValue: val,
 		}
 	case jsoniter.NumberValue:
+		var val float64
+		iter.ReadVal(&val)
 		x.Kind = &structpb.Value_NumberValue{
-			NumberValue: iter.ReadFloat64(),
+			NumberValue: val,
 		}
 	case jsoniter.StringValue:
 		var str string

@@ -77,12 +77,38 @@ func BenchmarkRead(b *testing.B) {
 		}
 	})
 
-	fcfg := jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
-	fcfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true})
+	cfg = jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true})
 	b.Run("jsoniter-fast", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
-			_ = fcfg.Unmarshal(buffer, &all)
+			_ = cfg.Unmarshal(buffer, &all)
+		}
+	})
+
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{DisableFuzzyDecode: true})
+	b.Run("jsoniter-nofuzzydecode", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			buffer := buffers[rand.Intn(len(buffers))]
+			_ = cfg.Unmarshal(buffer, &all)
+		}
+	})
+
+	cfg = jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true, DisableFuzzyDecode: true})
+	b.Run("jsoniter-fast-nofuzzydecode", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			buffer := buffers[rand.Intn(len(buffers))]
+			_ = cfg.Unmarshal(buffer, &all)
+		}
+	})
+
+	cfg = jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	b.Run("jsoniter-noprotoext", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			buffer := buffers[rand.Intn(len(buffers))]
+			_ = cfg.Unmarshal(buffer, &all)
 		}
 	})
 }
