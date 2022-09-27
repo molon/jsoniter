@@ -100,7 +100,8 @@ func (dec *protoEnumDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator)
 		num := iter.ReadInt32()
 		*((*protoreflect.EnumNumber)(ptr)) = protoreflect.EnumNumber(num)
 	case jsoniter.StringValue:
-		name := iter.ReadString()
+		var name string
+		iter.ReadVal(&name)
 		dec.once.Do(func() {
 			x := dec.valueType.UnsafeIndirect(ptr).(protoreflect.Enum)
 			dec.enumValDescs = x.Descriptor().Values()

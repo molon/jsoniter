@@ -101,8 +101,10 @@ func unmarshalWktValue(x *structpb.Value, iter *jsoniter.Iterator) error {
 			NumberValue: iter.ReadFloat64(),
 		}
 	case jsoniter.StringValue:
+		var str string
+		iter.ReadVal(&str)
 		x.Kind = &structpb.Value_StringValue{
-			StringValue: iter.ReadString(),
+			StringValue: str,
 		}
 	case jsoniter.ObjectValue:
 		v := &structpb.Struct{}

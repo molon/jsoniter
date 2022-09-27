@@ -24,13 +24,24 @@ func main() {
 }
 
 func run() error {
-	// if err := handleEncode(); err != nil {
-	// 	return err
-	// }
+	if err := downloadPb3(); err != nil {
+		return err
+	}
+	if err := handleEncode(); err != nil {
+		return err
+	}
 	if err := handleDecode(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func downloadPb3() error {
+	f, err := fetchGithubFile("protocolbuffers/protobuf-go", "internal/testprotos/textpb3/test.pb.go")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile("./textpb3/test.pb.go", []byte(f.Body), 0644)
 }
 
 func handleEncode() error {
@@ -132,17 +143,17 @@ func compact(t *testing.T, want string) string {
 }
 
 func handleDecode() error {
-	// f, err := fetchGithubFile("protocolbuffers/protobuf-go", "encoding/protojson/decode_test.go")
-	// if err != nil {
-	// 	return err
-	// }
-	b, err := ioutil.ReadFile("./decode_test_upstream._go")
+	f, err := fetchGithubFile("protocolbuffers/protobuf-go", "encoding/protojson/decode_test.go")
 	if err != nil {
 		return err
 	}
-	f := &GithubFile{
-		Body: string(b),
-	}
+	// b, err := ioutil.ReadFile("./decode_test_upstream._go")
+	// if err != nil {
+	// 	return err
+	// }
+	// f := &GithubFile{
+	// 	Body: string(b),
+	// }
 
 	// \{\s*desc:[\s\S]+?(?=(\{\s*desc:|\}\s*for))
 	r := regexp2.MustCompile(`\{\s*desc:[\s\S]+?(?=(\{\s*desc:|\}\s*for))`, 0)
@@ -179,93 +190,93 @@ func handleDecode() error {
 )`)
 	f.Body = regexp.MustCompile(`for _, tt := range tests \{[\s\S]+$`).ReplaceAllString(f.Body,
 		strings.ReplaceAll(`
-		const ignores = PLACEHOLDER
-		[fuzzy decode] not boolean
-		[fuzzy decode] integer string with leading space
-		[fuzzy decode] float string with leading space
-		[fuzzy decode] double string with trailing space
-		[not support] integers
-		[not support] integers in string
-		[not support] integers in escaped string
-		[should support] string with invalid UTF-8
-		[fuzzy decode] enum set to number string
-		[err not same] camelCase name
-		[????] proto name and json_name
-		[????] duplicate field names
-		[err not same] message set to non-message
-		[err not same] nested message set to non-message
-		[should support] oneof set to more than one field
-		[should support] oneof set to null and value
-		[????] map contains duplicate keys
-		[should support] map contains null for message value
-		[should support] map contains contains message value with invalid UTF8
-		[should support] map key contains invalid UTF8
-		[????] Empty contains unknown
-		[not support] Int32Value in JSON string
-		[should support] StringValue_with_invalid_UTF8_error
-		[should support] Value_string_with_invalid_UTF8
-		[should support] Value_struct_with_invalid_UTF8_string
-		[should support] Value_list_with_invalid_UTF8_string
-		[should support] Any with missing Empty
-		[should support] Any with StringValue containing invalid UTF8
-		[should support] Any with Value of StringValue
-		[err not same] Any with missing @type
-		[should support] Any with empty @type
-		[should support] Any with duplicate value
-		[should support] DiscardUnknown: Any without type
-		PLACEHOLDER
-ignoreDescs := map[string]string{}
-r := regexp.MustCompile("\\[([^\\]]+)\\]\\s*(.+)")
-for _, v := range strings.Split(ignores, "\n") {
-	v = strings.TrimSpace(v)
-	if v=="" {
-		continue
-	}
-	es := r.FindAllStringSubmatch(v, -1)
-	ignoreDescs[strings.TrimSpace(es[0][2])] = strings.TrimSpace(es[0][1])
-}
-
-for _, tt := range tests {
-	tt := tt
-	if tt.skip {
-		continue
-	}
-
-	if sign,ok := ignoreDescs[tt.desc];ok {
-		switch sign {
-		case "fuzzy decode","not support","err not same":
+	const ignores = PLACEHOLDER
+	[FuzzyDecode] not boolean
+	[FuzzyDecode] integer string with leading space
+	[FuzzyDecode] float string with leading space
+	[FuzzyDecode] double string with trailing space
+	[FuzzyDecode] enum set to number string
+	[FuzzyDecode] map contains null for message value
+	[ErrMsgNotSame] string with invalid UTF-8
+	[ErrMsgNotSame] camelCase name
+	[ErrMsgNotSame] message set to non-message
+	[ErrMsgNotSame] nested message set to non-message
+	[ErrMsgNotSame] map contains contains message value with invalid UTF8
+	[ErrMsgNotSame] map key contains invalid UTF8
+	[ErrMsgNotSame] Empty contains unknown
+	[ErrMsgNotSame] StringValue_with_invalid_UTF8_error
+	[ErrMsgNotSame] Value_string_with_invalid_UTF8
+	[ErrMsgNotSame] Value_struct_with_invalid_UTF8_string
+	[ErrMsgNotSame] Value_list_with_invalid_UTF8_string
+	[ErrMsgNotSame] Any with missing Empty
+	[ErrMsgNotSame] Any with StringValue containing invalid UTF8
+	[ErrMsgNotSame] Any with Value of StringValue
+	[ErrMsgNotSame] Any with missing @type
+	[ErrMsgNotSame] Any with empty @type
+	[ErrMsgNotSame] Any with duplicate value
+	[NotSupport] integers
+	[NotSupport] integers in string
+	[NotSupport] integers in escaped string
+	[NotSupport] proto name and json_name
+	[NotSupport] duplicate field names
+	[NotSupport] oneof set to more than one field
+	[NotSupport] oneof set to null and value
+	[NotSupport] map contains duplicate keys
+	[NotSupport] Int32Value in JSON string
+	[NotSupport] DiscardUnknown: Any without type
+	PLACEHOLDER
+	ignoreDescs := map[string]string{}
+	r := regexp.MustCompile("\\[([^\\]]+)\\]\\s*(.+)")
+	for _, v := range strings.Split(ignores, "\n") {
+		v = strings.TrimSpace(v)
+		if v=="" {
 			continue
 		}
+		es := r.FindAllStringSubmatch(v, -1)
+		ignoreDescs[strings.TrimSpace(es[0][2])] = strings.TrimSpace(es[0][1])
 	}
 
-	t.Run(tt.desc, func(t *testing.T) {
-		cfg := jsoniter.Config{SortMapKeys: true,DisallowUnknownFields: !tt.umo.DiscardUnknown}.Froze()
-		cfg.RegisterExtension(&protoext.ProtoExtension{
-			Resolver: tt.umo.Resolver,
+	for _, tt := range tests {
+		tt := tt
+		if tt.skip {
+			continue
+		}
+
+		if sign,ok := ignoreDescs[tt.desc];ok {
+			switch sign {
+			case "FuzzyDecode","NotSupport","ErrMsgNotSame":
+				continue
+			}
+		}
+
+		t.Run(tt.desc, func(t *testing.T) {
+			cfg := jsoniter.Config{SortMapKeys: true,DisallowUnknownFields: !tt.umo.DiscardUnknown}.Froze()
+			cfg.RegisterExtension(&protoext.ProtoExtension{
+				Resolver: tt.umo.Resolver,
+			})
+			err := cfg.Unmarshal([]byte(tt.inputText), tt.inputMessage)
+			if err != nil {
+				if tt.wantErr == "" {
+					t.Errorf("Unmarshal() got unexpected error: %v", err)
+				} else {
+					if strings.Contains(tt.wantErr, "invalid value for") {
+						return
+					}
+					if !strings.Contains(err.Error(), tt.wantErr) {
+						t.Errorf("Unmarshal() error got %q, want %q", err, tt.wantErr)
+					}
+				} 
+				return
+			}
+			if tt.wantErr != "" {
+				t.Errorf("Unmarshal() got nil error, want error %q", tt.wantErr)
+			}
+			if tt.wantMessage != nil && !proto.Equal(tt.inputMessage, tt.wantMessage) {
+				t.Errorf("Unmarshal()\n<got>\n%v\n<want>\n%v\n", tt.inputMessage, tt.wantMessage)
+			}
 		})
-		err := cfg.Unmarshal([]byte(tt.inputText), tt.inputMessage)
-		if err != nil {
-			if tt.wantErr == "" {
-				t.Errorf("Unmarshal() got unexpected error: %v", err)
-			} else {
-				if strings.Contains(tt.wantErr, "invalid value for") {
-					return
-				}
-				if !strings.Contains(err.Error(), tt.wantErr) {
-					t.Errorf("Unmarshal() error got %q, want %q", err, tt.wantErr)
-				}
-			} 
-			return
-		}
-		if tt.wantErr != "" {
-			t.Errorf("Unmarshal() got nil error, want error %q", tt.wantErr)
-		}
-		if tt.wantMessage != nil && !proto.Equal(tt.inputMessage, tt.wantMessage) {
-			t.Errorf("Unmarshal()\n<got>\n%v\n<want>\n%v\n", tt.inputMessage, tt.wantMessage)
-		}
-	})
-}
-}		
+	}
+}	
 `, "PLACEHOLDER", "`"))
 	f.Body = fmt.Sprintf(`
 // generated by go run gen.go; DO NOT EDIT

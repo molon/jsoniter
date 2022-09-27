@@ -103,12 +103,17 @@ func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 
 	var typeUrl string
 	var valueBytes []byte
-	numField := 0
+	fields := map[string]bool{}
 
 	subStream := iter.API().BorrowStream(nil)
 	defer iter.API().ReturnStream(subStream)
 	subStream.WriteObjectStart()
 	iter.ReadMapCB(func(iter *jsoniter.Iterator, field string) bool {
+		if fields[field] {
+			iter.ReportError("protobuf", fmt.Sprintf("%s: duplicate %q field", Any_message_fullname, field))
+			return false
+		}
+		fields[field] = true
 		if field == "@type" {
 			typeUrl = iter.ReadString()
 			return true
@@ -119,19 +124,23 @@ func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 		}
 		subStream.WriteObjectField(field)
 		subStream.Write(value)
-		numField++
 		return true
 	})
 	subStream.WriteObjectEnd()
 
-	if typeUrl == "" {
-		if numField > 0 {
-			iter.ReportError("protobuf", fmt.Sprintf(`%s: missing "@type" field`, Any_message_fullname))
-			return
-		}
+	if len(fields) <= 0 {
 		// empty any object
 		m.TypeUrl = typeUrl
 		m.Value = nil
+		return
+	}
+
+	if typeUrl == "" {
+		if fields["@type"] {
+			iter.ReportError("protobuf", fmt.Sprintf(`%s: "@type" field contains empty value`, Any_message_fullname))
+			return
+		}
+		iter.ReportError("protobuf", fmt.Sprintf(`%s: missing "@type" field`, Any_message_fullname))
 		return
 	}
 
@@ -145,10 +154,15 @@ func (c *wktAnyDecoder) Decode(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
 
 	var subIter *jsoniter.Iterator
 	if IsWellKnownType(reflect2.TypeOf(em)) {
+		if !fields["value"] {
+			iter.ReportError("protobuf", fmt.Sprintf(`%s: missing "value" field`, Any_message_fullname))
+			return
+		}
 		subIter = iter.API().BorrowIterator(valueBytes)
 	} else {
 		subIter = iter.API().BorrowIterator(subStream.Buffer())
 	}
+	subIter.Attachment = iter.Attachment
 	defer iter.API().ReturnIterator(subIter)
 	subIter.ReadVal(em)
 	if subIter.Error != nil && subIter.Error != io.EOF {

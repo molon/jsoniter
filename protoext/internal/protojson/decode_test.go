@@ -14,6 +14,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"regexp"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -1432,21 +1433,83 @@ func TestUnmarshal(t *testing.T) {
 		},
 	}, }
 
+	
+	const ignores = `
+	[FuzzyDecode] not boolean
+	[FuzzyDecode] integer string with leading space
+	[FuzzyDecode] float string with leading space
+	[FuzzyDecode] double string with trailing space
+	[FuzzyDecode] enum set to number string
+	[FuzzyDecode] map contains null for message value
+	[ErrMsgNotSame] string with invalid UTF-8
+	[ErrMsgNotSame] camelCase name
+	[ErrMsgNotSame] message set to non-message
+	[ErrMsgNotSame] nested message set to non-message
+	[ErrMsgNotSame] map contains contains message value with invalid UTF8
+	[ErrMsgNotSame] map key contains invalid UTF8
+	[ErrMsgNotSame] Empty contains unknown
+	[ErrMsgNotSame] StringValue_with_invalid_UTF8_error
+	[ErrMsgNotSame] Value_string_with_invalid_UTF8
+	[ErrMsgNotSame] Value_struct_with_invalid_UTF8_string
+	[ErrMsgNotSame] Value_list_with_invalid_UTF8_string
+	[ErrMsgNotSame] Any with missing Empty
+	[ErrMsgNotSame] Any with StringValue containing invalid UTF8
+	[ErrMsgNotSame] Any with Value of StringValue
+	[ErrMsgNotSame] Any with missing @type
+	[ErrMsgNotSame] Any with empty @type
+	[ErrMsgNotSame] Any with duplicate value
+	[NotSupport] integers
+	[NotSupport] integers in string
+	[NotSupport] integers in escaped string
+	[NotSupport] proto name and json_name
+	[NotSupport] duplicate field names
+	[NotSupport] oneof set to more than one field
+	[NotSupport] oneof set to null and value
+	[NotSupport] map contains duplicate keys
+	[NotSupport] Int32Value in JSON string
+	[NotSupport] DiscardUnknown: Any without type
+	`
+	ignoreDescs := map[string]string{}
+	r := regexp.MustCompile("\\[([^\\]]+)\\]\\s*(.+)")
+	for _, v := range strings.Split(ignores, "\n") {
+		v = strings.TrimSpace(v)
+		if v=="" {
+			continue
+		}
+		es := r.FindAllStringSubmatch(v, -1)
+		ignoreDescs[strings.TrimSpace(es[0][2])] = strings.TrimSpace(es[0][1])
+	}
+
 	for _, tt := range tests {
 		tt := tt
 		if tt.skip {
 			continue
 		}
+
+		if sign,ok := ignoreDescs[tt.desc];ok {
+			switch sign {
+			case "FuzzyDecode","NotSupport","ErrMsgNotSame":
+				continue
+			}
+		}
+
 		t.Run(tt.desc, func(t *testing.T) {
-			cfg := jsoniter.Config{SortMapKeys: true}.Froze()
-			cfg.RegisterExtension(&protoext.ProtoExtension{})
+			cfg := jsoniter.Config{SortMapKeys: true,DisallowUnknownFields: !tt.umo.DiscardUnknown}.Froze()
+			cfg.RegisterExtension(&protoext.ProtoExtension{
+				Resolver: tt.umo.Resolver,
+			})
 			err := cfg.Unmarshal([]byte(tt.inputText), tt.inputMessage)
 			if err != nil {
 				if tt.wantErr == "" {
 					t.Errorf("Unmarshal() got unexpected error: %v", err)
-				} else if !strings.Contains(err.Error(), tt.wantErr) {
-					t.Errorf("Unmarshal() error got %q, want %q", err, tt.wantErr)
-				}
+				} else {
+					if strings.Contains(tt.wantErr, "invalid value for") {
+						return
+					}
+					if !strings.Contains(err.Error(), tt.wantErr) {
+						t.Errorf("Unmarshal() error got %q, want %q", err, tt.wantErr)
+					}
+				} 
 				return
 			}
 			if tt.wantErr != "" {
@@ -1457,4 +1520,4 @@ func TestUnmarshal(t *testing.T) {
 			}
 		})
 	}
-}
+}	

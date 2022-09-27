@@ -122,14 +122,7 @@ var WktProtoCodecs = map[reflect2.Type]*ProtoCodec{
 	reflect2.TypeOfPtr((*structpb.Value)(nil)):            wktValueCodec,
 
 	reflect2.TypeOfPtr((*fieldmaskpb.FieldMask)(nil)).Elem(): wktFieldmaskCodec,
-	reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem(): (&ProtoCodec{}).
-		SetElemEncodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, stream *jsoniter.Stream) {
-			stream.WriteObjectStart()
-			stream.WriteObjectEnd()
-		}).
-		SetElemDecodeFunc(func(e *ProtoExtension, ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			iter.Skip()
-		}),
+	// reflect2.TypeOfPtr((*emptypb.Empty)(nil)).Elem(): // No special handling required
 }
 
 func init() {

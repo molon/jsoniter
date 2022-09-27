@@ -64,11 +64,11 @@ func (e *ProtoExtension) decorateEncoderForScalar(typ reflect2.Type, enc jsonite
 			}
 			switch {
 			case math.IsNaN(n):
-				stream.WriteString("NaN")
+				stream.WriteRaw(`"NaN"`)
 			case math.IsInf(n, +1):
-				stream.WriteString("Infinity")
+				stream.WriteRaw(`"Infinity"`)
 			case math.IsInf(n, -1):
-				stream.WriteString("-Infinity")
+				stream.WriteRaw(`"-Infinity"`)
 			default:
 				enc.Encode(ptr, stream)
 			}
@@ -139,6 +139,13 @@ func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsonite
 					*((*string)(ptr)) = ""
 				default:
 					dec.Decode(ptr, iter)
+					if iter.Error == nil {
+						if !e.PermitInvalidUTF8 {
+							if !utf8.ValidString(*((*string)(ptr))) {
+								iter.Error = errInvalidUTF8
+							}
+						}
+					}
 				}
 			},
 		}
@@ -178,6 +185,7 @@ func (e *ProtoExtension) decorateDecoderForScalar(typ reflect2.Type, dec jsonite
 				default:
 					// fuzzy decode
 					subIter := iter.Pool().BorrowIterator([]byte(str))
+					subIter.Attachment = iter.Attachment
 					defer iter.API().ReturnIterator(subIter)
 					dec.Decode(ptr, subIter)
 					if subIter.Error != nil && subIter.Error != io.EOF && iter.Error == nil {
