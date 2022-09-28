@@ -207,6 +207,7 @@ func TestProtoEqualIssue(t *testing.T) {
 	m2 = &testv1.Singular{}
 	err = pUnmarshalFromString(jsn, m2)
 	assert.Nil(t, err)
+	// https://github.com/golang/protobuf/issues/1489
 	// assert.Equal(t, "", cmp.Diff(m, m2, protocmp.Transform())) // not empty
 	assert.True(t, proto.Equal(m, m2))
 }
