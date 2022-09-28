@@ -25,7 +25,10 @@ func BenchmarkWrite(b *testing.B) {
 	b.Run("protojson", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			m := ms[rand.Intn(len(ms))]
-			_, _ = protojson.Marshal(m)
+			_, err := protojson.Marshal(m)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -34,16 +37,33 @@ func BenchmarkWrite(b *testing.B) {
 	b.Run("jsoniter", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			m := ms[rand.Intn(len(ms))]
-			_, _ = cfg.Marshal(m)
+			_, err := cfg.Marshal(m)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
-	fcfg := jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
-	fcfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true})
+	cfg = jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{PermitInvalidUTF8: true})
 	b.Run("jsoniter-fast", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			m := ms[rand.Intn(len(ms))]
-			_, _ = fcfg.Marshal(m)
+			_, err := cfg.Marshal(m)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	cfg = jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
+	b.Run("jsoniter-noprotoext", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			m := ms[rand.Intn(len(ms))]
+			_, err := cfg.Marshal(m)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }
@@ -64,7 +84,10 @@ func BenchmarkRead(b *testing.B) {
 	b.Run("protojson", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
-			_ = protojson.Unmarshal(buffer, &all)
+			err := protojson.Unmarshal(buffer, &all)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -73,7 +96,10 @@ func BenchmarkRead(b *testing.B) {
 	b.Run("jsoniter", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
-			_ = cfg.Unmarshal(buffer, &all)
+			err := cfg.Unmarshal(buffer, &all)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -82,7 +108,10 @@ func BenchmarkRead(b *testing.B) {
 	b.Run("jsoniter-fast", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
-			_ = cfg.Unmarshal(buffer, &all)
+			err := cfg.Unmarshal(buffer, &all)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -91,7 +120,10 @@ func BenchmarkRead(b *testing.B) {
 	b.Run("jsoniter-nofuzzydecode", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
-			_ = cfg.Unmarshal(buffer, &all)
+			err := cfg.Unmarshal(buffer, &all)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -100,15 +132,10 @@ func BenchmarkRead(b *testing.B) {
 	b.Run("jsoniter-fast-nofuzzydecode", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buffer := buffers[rand.Intn(len(buffers))]
-			_ = cfg.Unmarshal(buffer, &all)
-		}
-	})
-
-	cfg = jsoniter.Config{SortMapKeys: false, DisallowUnknownFields: false}.Froze()
-	b.Run("jsoniter-noprotoext", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			buffer := buffers[rand.Intn(len(buffers))]
-			_ = cfg.Unmarshal(buffer, &all)
+			err := cfg.Unmarshal(buffer, &all)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }

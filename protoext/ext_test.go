@@ -847,3 +847,27 @@ func TestOptionals(t *testing.T) {
 	jsn, _ := commonCheck(t, cfg, &protojson.MarshalOptions{EmitUnpopulated: true}, &testv1.Optionals{})
 	assert.Equal(t, "{}", jsn)
 }
+
+func TestEscapeHTML(t *testing.T) {
+	var jsn string
+	var err error
+
+	s := "\u0000\u0008\u2028\"\\/\b\f\n\r\t你好啊朋友"
+	invalidS := "contains invalid utf8 \xff"
+
+	cfg := jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	jsn, err = cfg.MarshalToString(s)
+	assert.Nil(t, err)
+	assert.Equal(t, `"\u0000\b \"\\/\b\f\n\r\t你好啊朋友"`, jsn)
+	jsn, err = cfg.MarshalToString(invalidS)
+	assert.Contains(t, err.Error(), `invalid UTF-8`)
+
+	cfg = jsoniter.Config{SortMapKeys: true, DisallowUnknownFields: true, EscapeHTML: true}.Froze()
+	cfg.RegisterExtension(&protoext.ProtoExtension{})
+	jsn, err = cfg.MarshalToString(s)
+	assert.Nil(t, err)
+	assert.Equal(t, `"\u0000\b\u2028\"\\/\b\f\n\r\t你好啊朋友"`, jsn)
+	jsn, err = cfg.MarshalToString(invalidS)
+	assert.Contains(t, err.Error(), `invalid UTF-8`)
+}
